@@ -1,48 +1,36 @@
-# Data update patch status
+# October source-data update
 
-Base: `main` at `70e09f542adbe71cb1c33a654d045209ad630931`.
-This metrics-only port preserves the live monolith and all existing style blocks; it does not deploy the premium development design.
+The original main commit `70e09f542adbe71cb1c33a654d045209ad630931` was backed up with all four original files and checksums before this update. Original style blocks and the handbook/LOTO files are unchanged.
 
-## Implemented
+## Published snapshot
 
-- One production calculation path for Home and KPI cards; removed timed hard-coded total overrides.
-- Historical fixture code removed from the active application; prior source remains in Git history. Previously seeded browser rows remain stored but are excluded from current totals. No browser data is deleted.
-- Production CSV/Excel parsing accepts separate batches, mixes and pallets columns. Exact output header matching prevents `Inventory pallets` or `Batches / Mixes` from silently becoming production output.
-- Unknown output stays unknown, partial totals are labeled, and invalid/negative quantities or impossible dates are rejected.
-- Normalization is connected to structured imports, manual entry and dashboard reads. Existing user confirmation/import history remain in place.
-- Shared production coverage note and maintenance source note distinguish historical, mixed and local-only data.
-- Existing import commits retain filename, type, import timestamp and date range. Import timestamp is not claimed as report freshness.
-- Word file selection is supported as an explicit local staging hold. No DOC/DOCX contents are parsed or quantities inferred yet.
+- ClickMaint custom selected dates: October 1–5, 2026; captured October 5, 15:01 UTC. Exact source timezone and timestamp inclusivity were not displayed.
+- Period activity is separate from the all-age current backlog snapshot.
+- Completed-work-order costs are recorded costs on WOs completed in the selected window, including older WOs; they are not October spending. The source currency symbol is $, with ISO code unverified.
+- Source discrepancies remain visible: LA 26th completed 136 versus 142; Maywood overdue 48 versus 49 and asset downtime 117.9 versus117.97 hours. Selected primary report values are retained, not silently reconciled.
+- Production shows14 nonconflicting provided production reports: partial batch subtotals 491 for 26th and 333 for Maywood. These are not full-facility totals. Other production aggregates remain unknown; packed or inventory pallets are not counted as made.
+- The cleared42-report catalog is published in stages. One original is currently available under its verified content-hash path; remaining originals have no active file links until their bytes are verified on GitHub. Originals requiring privacy review are not included. No source ZIP containing withheld files is included.
 
-## Groundwork only
+## Archive behavior
 
-`assets/data-core.js` includes pure mapped ClickMaint normalization, source identity/hash duplicate detection, correction review and Word attachment staging contracts. No API request, mailbox request, OAuth grant, secret, background schedule or automatic data write is implemented. The revision helper does not replace the existing manual import preview. A production Word template and verified ClickMaint response mapping are still required.
+Data Upload is an original-report archive. Published files can be searched by facility/date/shift/type and opened/downloaded. New uploads and metadata edits remain in that browser and never modify dashboard metrics. Original byte retention, deduplication and interrupted edits are tested. Metric recovery remains separate in KPI.
 
-Existing maintenance KPI formulas/legacy values are preserved, with clearer source labeling. They are not represented as newly refreshed metrics. Incoming verified source reports should be staged privately rather than committed to this public repository.
+The database and automated 6 AM Pacific updates are not enabled. This is a manually published source snapshot, not a live source connection. No credentials or unrelated email/invoice data are included.
 
 ## Verification
 
-- `node scripts/verify-main.cjs`: passed (11 inline scripts plus data-core syntax, required metric elements/workflows and removal of historical overrides). All original style blocks were compared byte-for-byte and remain unchanged.
-- `OPS_APP_SOURCE=$PWD/index.html node --test scripts/test-data-core.cjs`: 20 tests passed. Covers actual importer/calculator functions, saved corrections, explicit zero, unknown/partial totals, inventories, mixes, invalid dates, duplicate attachments, revisions, source namespace and coverage.
-- `git diff --check`: passed.
-- Browser QA script `scripts/test-browser.cjs` prepared but not passed. `agent-browser` is absent; installed Chromium fails to launch with `socket() failed: Operation not permitted`. Do not treat structural/unit checks as visual or end-to-end approval.
+- 20 production/data regression tests, 8 maintenance tests and 9 archive tests pass.
+- Actual snapshot totals, source distinctions, all 42 file hashes/paths and script dependencies were checked.
+- Original CSS blocks and handbook/LOTO assets match the original commit.
+- Browser/native IndexedDB visual verification was blocked in the preparation environment. Public-site verification remains a release check.
 
-## Before release
+Commands:
 
-1. Verify the patch in a browser that can run the local app. Exercise reload, facility changes, repeated imports, manual entry, cancellation and Word hold.
-2. Confirm historical records are presented appropriately and reconcile any older corrections already overwritten by the previous seeding logic. This patch cannot reconstruct lost prior data.
-3. Obtain real Word samples, including revisions; verify dates, shifts, facilities, counts and source provenance before connecting extraction.
-4. Verify current ClickMaint facility/period/units and privately refresh approved source data.
-5. Obtain explicit publication/deployment scope. No push, deployment, credential setup or private-source publication was performed for this patch.
+```
+node scripts/verify-main.cjs
+OPS_APP_SOURCE=$PWD/index.html node --test scripts/test-data-core.cjs
+node --test scripts/test-maintenance.cjs
+node --test scripts/test-archive.cjs
+```
 
-Release preparation was rechecked against a complete checkout of main. The handbook and both LOTO workbooks are present and remain byte-identical to the original commit; the patch does not modify or delete them. The original complete tree was archived with file checksums before publication.
-
-Review additionally confirmed partial-import and manual corrections preserve omitted quantities and staffing/details; exact underscore/hyphen headers remain supported, impossible textual dates are rejected, and empty legacy quantities stay unknown. Obvious ordinal/number shift labels canonicalize (1/1st, 2/2nd, 3/3rd); existing storage keys are preserved on correction. Collisions are held for review and excluded from totals. Plant-specific and day/night labels are not silently equated.
-
-Legacy migration now stages all candidates before writing, preserves existing canonical or ordinal corrections across repeated startup, and holds conflicting legacy aliases without importing either. Focused independent shift checks pass against both source layouts.
-
-## ClickMaint maintenance follow-up
-
-The maintenance source note is now visible. Historical Sacramento/New York seeds never replace an existing saved summary. Missing facility/period data and unrelated fields in partial summaries remain unknown; explicit zeros remain zero, including percentages and labor hours. Eight additional maintenance regression tests pass (`node --test scripts/test-maintenance.cjs`), alongside the 20 production/data tests. No newly verified ClickMaint values are embedded or fetched by this change.
-
-This draft is not a complete daily integration. Current ClickMaint source verification, private persistence, scheduling and browser QA remain outstanding. The separately requested archive-only Data Upload behavior is not included in this metrics draft and must be reconciled before release; no original work reports or invoices are included.
+Rollback: restore the original Git tree with a reviewed revert/restoration commit; do not force-push or rewrite history. Browser-local records are separate from repository backups.

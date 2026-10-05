@@ -25,13 +25,19 @@ const assert=require('node:assert/strict');
     await page.selectOption('#siteSelector','la26');await page.waitForTimeout(1500);
     assert.equal(await page.locator('#homeBatches').innerText(),'999');
     await page.evaluate(async()=>{
-      stageOpsFile('production',new File(['synthetic non-Word bytes'],'sample.docx'));
-      await analyzeOpsImport('production');
+      document.getElementById('archiveFacility').value='la26';
+      document.getElementById('archiveReportDate').value='2026-10-04';
+      document.getElementById('archiveShift').value='1';
+      await archiveReportFiles([new File(['original test bytes'],'sample.docx')]);
     });
-    assert.match(await page.locator('#importPreviewDetails').innerText(),/template review/);
-    assert.equal(await page.locator('#confirmImportBtn').isDisabled(),true);
+    assert.match(await page.locator('#archiveStatus').innerText(),/1 original\(s\) saved/);
+    assert.equal(await page.locator('#homeBatches').innerText(),'999');
+    assert.equal(await page.locator('#confirmImportBtn').count(),0);
+    await page.reload({waitUntil:'load'});await page.waitForTimeout(1800);
+    assert.match(await page.locator('#archiveList').innerText(),/sample.docx/);
+    assert.equal(await page.locator('#homeBatches').innerText(),'999');
     assert.deepEqual(errors,[]);
     await page.screenshot({path:'/tmp/lamonicas-patch.png'});
-    console.log('Browser checks passed: initial unknown, corrected record, reload, facility switching, no inventory counting, Word hold, no page errors. External CDN libraries were blocked in this test.');
+    console.log('Browser checks passed: initial unknown, corrected record, reload, facility switching, no inventory counting, archive persistence and metric isolation, no page errors. External CDN libraries were blocked in this test.');
   }finally{await browser?.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

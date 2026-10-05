@@ -770,6 +770,11 @@ footer strong{color:var(--red)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="assets/data-core.js"></script>
+<script src="assets/archive-core.js"></script>
+<script src="assets/source-data.js"></script>
+<script src="assets/current-data-adapter.js"></script>
+<script src="assets/archive-ui.js" defer></script>
+<script src="assets/source-snapshot-ui.js" defer></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
 <style>
 .asset-toolbar{grid-template-columns:1fr!important}
@@ -2003,7 +2008,7 @@ nav{
 <button class="quick-card" onclick="showPage('kpi')"><div class="quick-icon">📊</div><h4>KPI Dashboard</h4><p>Maintenance performance and backlog.</p></button>
 <button class="quick-card" onclick="showPage('purchasing')"><div class="quick-icon">🧾</div><h4>Purchasing &amp; Invoices</h4><p>Receiving, invoices and vendor documents.</p></button>
 <button class="quick-card" onclick="showPage('drawings')"><div class="quick-icon">📐</div><h4>Assets</h4><p>Drawings, manuals and technical files.</p></button>
-<button class="quick-card" onclick="showPage('dataupload')"><div class="quick-icon">⬆</div><h4>Data Upload</h4><p>Upload current operational and maintenance data.</p></button>
+<button class="quick-card" onclick="showPage('dataupload')"><div class="quick-icon">⬆</div><h4>Data Upload</h4><p>Store and find original shift reports. Uploading never changes dashboard metrics.</p></button>
 <button class="quick-card" onclick="showPage('safety')"><div class="quick-icon">🦺</div><h4>Safety</h4><p>Procedures and safety resources.</p></button>
 <button class="quick-card" onclick="showPage('employees')"><div class="quick-icon">👥</div><h4>Employee Resources</h4><p>Policies, forms and common resources.</p></button>
 </div>
@@ -2022,6 +2027,8 @@ nav{
 </div>
 <div class="kpi-tab-panel active" id="kpiMaintenanceTab">
 <p class="file-meta" id="kpiDataSourceNote" role="status">Checking source coverage…</p>
+<div class="panel" id="previewMaintenanceNotes" style="padding:14px;margin-bottom:16px"></div>
+<div class="data-control-actions"><button class="small-btn" id="undoLastActionBtn" type="button">↶ Undo last metric action</button><span class="file-meta" id="dataControlStatus">Metric recovery stays separate from the report archive.</span></div>
 <div class="section-title">
 <h3>Maintenance Performance</h3>
 <div class="kpi-metric-tools">
@@ -2659,151 +2666,29 @@ nav{
 <div class="asset-detail" id="assetDetail"></div>
 </section>
 <section class="page" id="dataupload">
-<div class="page-head">
-<div>
-<h2>⬆ Data Upload</h2>
-<p>Choose the data type, select or drop a file, then upload. You can also enter one record manually.</p>
-</div>
-<div class="site-tag global-site-label">📍 All Locations</div>
-</div>
-<div class="simple-upload-note panel">
-<strong>ClickMaint summary reports:</strong>
-<span>If the report does not include a plant/location column, select the correct location at the top before uploading.</span>
-</div>
-<div class="import-area-grid simple-import-grid">
-<div class="import-area simple-import-card" data-import-area="workorders">
-<div class="import-area-head">
-<div><h3>🔧 Maintenance / Work Orders</h3><p>WO exports, backlog by assignee, history by assignee, and on-time/overdue reports.</p></div>
-<span class="update-status" id="workordersAreaStatus">Ready</span>
-</div>
-<div class="import-area-targets"><span>Total / Open / Completed</span><span>Overdue</span><span>Reactive / PM</span><span>Technician Backlog</span></div>
-<div aria-label="Drop or select a maintenance file" class="ops-area-drop simple-drop" id="workordersImportDrop" role="button" tabindex="0">
-<div class="simple-drop-icon">⬆</div><strong>Drag &amp; Drop File Here</strong><small>or click this box</small>
-</div>
-<input accept=".xlsx,.xls,.csv" hidden="" id="workordersImportFile" type="file"/>
-<div class="ops-area-file" id="workordersImportFileName">No file selected.</div>
-<div class="simple-upload-actions">
-<button class="small-btn select-file-btn" data-choose-file="workorders" type="button">Select File</button>
-<button class="primary-btn upload-file-btn" disabled="" id="workordersAnalyzeFileBtn" type="button">Upload File</button>
-</div>
-<details class="manual-entry">
-<summary>Paste text data instead</summary>
-<div class="plain-text-entry">
-<textarea aria-label="Paste maintenance data" class="plain-data-box" id="workordersPaste"></textarea>
-<button class="primary-btn text-submit-btn" id="workordersAnalyzeTextBtn" type="button">Submit Text Data</button>
-</div>
-</details>
-</div>
-<div class="import-area simple-import-card" data-import-area="production">
-<div class="import-area-head">
-<div><h3>🍕 Production</h3><p>Batches and pallets. Same Location + Date + Shift updates instead of duplicates.</p></div>
-<span class="update-status" id="productionAreaStatus">Ready</span>
-</div>
-<div class="import-area-targets"><span>Batches of Dough</span><span>Pallets Made</span></div>
-<div aria-label="Drop or select a production file" class="ops-area-drop simple-drop" id="productionImportDrop" role="button" tabindex="0">
-<div class="simple-drop-icon">⬆</div><strong>Drag &amp; Drop File Here</strong><small>or click this box</small>
-</div>
-<input accept=".xlsx,.xls,.csv,.doc,.docx" hidden="" id="productionImportFile" type="file"/>
-<div class="ops-area-file" id="productionImportFileName">No file selected.</div>
-<div class="simple-upload-actions">
-<button class="small-btn select-file-btn" data-choose-file="production" type="button">Select File</button>
-<button class="primary-btn upload-file-btn" disabled="" id="productionAnalyzeFileBtn" type="button">Upload File</button>
-</div>
-<details class="manual-entry">
-<summary>Paste text data instead</summary>
-<div class="plain-text-entry">
-<textarea aria-label="Paste production data" class="plain-data-box" id="productionPaste"></textarea>
-<button class="primary-btn text-submit-btn" id="productionAnalyzeTextBtn" type="button">Submit Text Data</button>
-</div>
-</details>
-</div>
-<div class="import-area simple-import-card" data-import-area="downtime">
-<div class="import-area-head">
-<div><h3>⏱ Downtime / Cost</h3><p>ClickMaint asset cost/downtime reports or WO-level downtime/cost corrections.</p></div>
-<span class="update-status" id="downtimeAreaStatus">Ready</span>
-</div>
-<div class="import-area-targets"><span>Downtime</span><span>Maintenance Cost</span><span>Asset Impact</span><span>Labor Detail</span></div>
-<div aria-label="Drop or select a downtime file" class="ops-area-drop simple-drop" id="downtimeImportDrop" role="button" tabindex="0">
-<div class="simple-drop-icon">⬆</div><strong>Drag &amp; Drop File Here</strong><small>or click this box</small>
-</div>
-<input accept=".xlsx,.xls,.csv" hidden="" id="downtimeImportFile" type="file"/>
-<div class="ops-area-file" id="downtimeImportFileName">No file selected.</div>
-<div class="simple-upload-actions">
-<button class="small-btn select-file-btn" data-choose-file="downtime" type="button">Select File</button>
-<button class="primary-btn upload-file-btn" disabled="" id="downtimeAnalyzeFileBtn" type="button">Upload File</button>
-</div>
-<details class="manual-entry">
-<summary>Paste text data instead</summary>
-<div class="plain-text-entry">
-<textarea aria-label="Paste downtime and cost data" class="plain-data-box" id="downtimePaste"></textarea>
-<button class="primary-btn text-submit-btn" id="downtimeAnalyzeTextBtn" type="button">Submit Text Data</button>
-</div>
-</details>
-</div>
-</div>
-<div class="section-title">
-<h3>Recovery</h3>
-<span>Metric resets are available from each KPI card's ⋮ menu</span>
-</div>
-<div class="panel data-control-panel">
-<div>
-<strong>Undo Last Action</strong>
-<p>Use the ⋮ menu on a KPI card to reset only that metric to 0. Undo restores the most recent metric reset or confirmed import.</p>
-</div>
-<div class="data-control-actions">
-<button class="small-btn" id="undoLastActionBtn" type="button">↶ Undo Last Action</button>
-</div>
-<div class="data-control-status" id="dataControlStatus">Recovery controls ready.</div>
-</div>
-<div class="panel import-preview-panel" hidden="" id="importPreview">
-<div class="update-head">
-<div>
-<h3>Import Preview</h3>
-<p class="import-preview-source" id="importPreviewSource">Nothing staged.</p>
-</div>
-<span class="update-status" id="importStageStatus">No import staged</span>
-</div>
-<div class="section-title"><h3 id="importPreviewType">—</h3><span>Review before committing</span></div>
-<div class="generated-location-summary" id="importPreviewStats"></div>
-<div class="detail-list" id="importPreviewDetails"></div>
-<div class="import-rejected" id="importRejectedDetails"></div>
-<div class="production-actions">
-<button class="small-btn" id="cancelImportBtn" type="button">Cancel Import</button>
-<button class="primary-btn" disabled="" id="confirmImportBtn" type="button">Confirm &amp; Update Dashboard</button>
-</div>
-</div>
-<div class="panel production-upload-panel manual-production-toggle" style="margin-top:18px">
-<div class="update-head">
-<div>
-<h3>Manual Production Entry</h3>
-<p>For one shift at a time. Location + Date + Shift is the unique key, so saving a correction updates that shift instead of adding to it.</p>
-</div>
-</div>
+<div class="page-head"><div><h2>⬆ Data Upload</h2><p>Keep original Word, PDF and other shift reports here. Saving a file does not update dashboard metrics.</p></div><div class="site-tag global-site-label">📍 All Locations</div></div>
+<div class="panel simple-upload-note"><strong>Published original reports.</strong><span>The cleared report catalog is below. Available originals have Open/Download links; remaining files are marked pending publication. Other originals remain pending privacy review. New uploads and label edits stay in this browser; they are not published and never update dashboard metrics. The database and daily updates are not connected yet.</span></div>
+<div class="panel" style="margin-bottom:18px">
 <div class="production-upload-grid">
-<label class="field"><span>Location</span><select id="productionLocation">
-<option value="">Select location</option><option value="maywood">Maywood</option><option value="la26">26th St.</option>
-<option value="indiana">Indiana</option><option value="sacramento">Sacramento</option><option value="newyork">New York</option>
-<option value="unassigned">Location unassigned</option>
-</select></label>
-<label class="field"><span>Production Date</span><input id="productionDate" type="date"/></label>
-<label class="field"><span>Shift</span><select id="productionShift">
-<option value="">Select shift</option><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option>
-</select></label>
-<label class="field"><span>Batches of Dough Made</span><input id="productionBatches" min="0" placeholder="0" step="1" type="number"/></label>
-<label class="field"><span>Pallets Made</span><input id="productionPallets" min="0" placeholder="0" step="1" type="number"/></label>
+<label class="field"><span>Facility</span><select id="archiveFacility"><option value="">Choose facility</option><option value="la26">LA 26th St.</option><option value="maywood">LA Maywood</option><option value="indiana">Indiana</option><option value="sacramento">Sacramento</option><option value="newyork">New York</option><option value="unassigned">Location not known</option></select></label>
+<label class="field"><span>Report date (leave blank if unknown)</span><input id="archiveReportDate" type="date"/></label>
+<label class="field"><span>Shift (as written on report)</span><input id="archiveShift" placeholder="1, 2, 3, M-A, M-C…" type="text"/></label>
+<label class="field"><span>Report type</span><select id="archiveKind"><option value="production">Production</option><option value="packaging">Packaging</option><option value="maintenance">Maintenance</option><option value="other">Other report</option></select></label>
+<label class="field"><span>Source / notes (optional)</span><input id="archiveNotes" type="text" placeholder="Original filename is preserved"/></label>
 </div>
-<div class="production-actions">
-<button class="small-btn" onclick="clearProductionEntry()" type="button">Clear</button>
-<button class="primary-btn" onclick="saveProductionEntry()" type="button">Save Production Data</button>
+<div class="ops-area-drop simple-drop" id="archiveDrop"><strong>Drop original reports here</strong><small>Original Word, PDF and other file formats are kept unchanged. Nothing is parsed into dashboard metrics. These labels apply to every file you select; add one facility/date/shift group at a time.</small><button class="primary-btn" id="archiveChoose" type="button">Choose original files</button></div>
+<input id="archiveFileInput" type="file" multiple hidden/>
+<div class="production-actions"><button class="primary-btn" id="archiveSaveDetails" type="button" hidden>Save archive labels</button><button class="small-btn" id="archiveCancelEdit" type="button" hidden>Cancel label edit</button></div>
+<div class="production-status" id="archiveStatus" role="status">Ready to archive originals. Dashboard metrics will not change.</div>
 </div>
-<div class="production-status" id="productionUploadStatus"></div>
-<div class="production-history" id="productionHistory"></div>
-</div>
-<div class="section-title">
-<h3>Import History</h3>
-<span id="dataLastUpdated">Data last updated: —</span>
-</div>
-<div class="panel"><div class="empty" id="dataUploadHistory">No confirmed imports yet.</div></div>
+<div class="panel" style="margin-bottom:18px"><div class="production-upload-grid">
+<label class="field"><span>Find a report</span><input id="archiveSearch" type="search" placeholder="Filename, notes, date…"/></label>
+<label class="field"><span>Shift</span><select id="archiveFilterShift"><option value="">All shifts</option></select></label>
+<label class="field"><span>Report type</span><select id="archiveFilterKind"><option value="">All types</option><option value="production">Production</option><option value="packaging">Packaging</option><option value="maintenance">Maintenance</option><option value="other">Other report</option></select></label>
+<label class="field"><span>From report date</span><input id="archiveFrom" type="date"/></label>
+<label class="field"><span>Through report date</span><input id="archiveTo" type="date"/></label>
+</div><p id="archiveCount">Loading local archive…</p></div>
+<div id="archiveList"></div>
 </section>
 <section class="page" id="safety">
 <div class="page-head">
@@ -3233,6 +3118,12 @@ function updateSiteLabels(){
 
 async function handleFiles(files,category,page){
   if(!files || !files.length)return;
+  if(category==="dataupload"){
+    if(typeof window.archiveReportFiles!=="function"){toast("Report archive is still loading. Try again shortly.");return;}
+    await window.archiveReportFiles(files);
+    if(page)showPage(page);
+    return;
+  }
 
   for(const file of files){
     await addFile(file,category);
@@ -7042,21 +6933,21 @@ const EMBEDDED_RESOURCE_FILES={
     title:"Employee Handbook",
     type:"pdf",
     mime:"application/pdf",
-    url:"assets/documents/employee-handbook.pdf"
+    url:"employee-handbook.pdf"
   },
   "maywood-loto":{
     name:"Lamonica's  LOTO Procedures Maywood.xlsx",
     title:"Maywood LOTO Procedures",
     type:"xlsx",
     mime:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    url:"assets/documents/maywood-loto-procedures.xlsx"
+    url:"maywood-loto-procedures.xlsx"
   },
   "26th-loto":{
     name:"Lamonica's 26th St LOTO Procedures.xlsx",
     title:"26th Street LOTO Procedures",
     type:"xlsx",
     mime:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    url:"assets/documents/26th-st-loto-procedures.xlsx"
+    url:"26th-st-loto-procedures.xlsx"
   }
 };
 
