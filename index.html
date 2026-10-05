@@ -3699,10 +3699,10 @@ function renderPurchasing(){
   document.getElementById("holdCount").textContent=hold;
   document.getElementById("paidCount").textContent=paid;
 
-  document.getElementById("homeReceived").textContent=received;
-  document.getElementById("homeWaitingInvoice").textContent=waiting;
-  document.getElementById("homeReadyToPay").textContent=ready;
-  document.getElementById("homeOnHold").textContent=hold;
+  {const counter=document.getElementById("homeReceived");if(counter)counter.textContent=received;}
+  {const counter=document.getElementById("homeWaitingInvoice");if(counter)counter.textContent=waiting;}
+  {const counter=document.getElementById("homeReadyToPay");if(counter)counter.textContent=ready;}
+  {const counter=document.getElementById("homeOnHold");if(counter)counter.textContent=hold;}
 
   renderReceivingQueue();
 }
