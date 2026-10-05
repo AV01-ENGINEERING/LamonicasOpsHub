@@ -769,6 +769,12 @@ footer strong{color:var(--red)}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="assets/data-core.js"></script>
+<script src="assets/archive-core.js"></script>
+<script src="assets/source-data.js"></script>
+<script src="assets/current-data-adapter.js"></script>
+<script src="assets/archive-ui.js" defer></script>
+<script src="assets/source-snapshot-ui.js" defer></script>
 <script>if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
 <style>
 .asset-toolbar{grid-template-columns:1fr!important}
@@ -2002,7 +2008,7 @@ nav{
 <button class="quick-card" onclick="showPage('kpi')"><div class="quick-icon">📊</div><h4>KPI Dashboard</h4><p>Maintenance performance and backlog.</p></button>
 <button class="quick-card" onclick="showPage('purchasing')"><div class="quick-icon">🧾</div><h4>Purchasing &amp; Invoices</h4><p>Receiving, invoices and vendor documents.</p></button>
 <button class="quick-card" onclick="showPage('drawings')"><div class="quick-icon">📐</div><h4>Assets</h4><p>Drawings, manuals and technical files.</p></button>
-<button class="quick-card" onclick="showPage('dataupload')"><div class="quick-icon">⬆</div><h4>Data Upload</h4><p>Upload current operational and maintenance data.</p></button>
+<button class="quick-card" onclick="showPage('dataupload')"><div class="quick-icon">⬆</div><h4>Data Upload</h4><p>Store and find original shift reports. Uploading never changes dashboard metrics.</p></button>
 <button class="quick-card" onclick="showPage('safety')"><div class="quick-icon">🦺</div><h4>Safety</h4><p>Procedures and safety resources.</p></button>
 <button class="quick-card" onclick="showPage('employees')"><div class="quick-icon">👥</div><h4>Employee Resources</h4><p>Policies, forms and common resources.</p></button>
 </div>
@@ -2020,6 +2026,9 @@ nav{
 <button class="kpi-inner-tab" data-kpi-tab="operations" type="button">🍕 Operations / Production</button>
 </div>
 <div class="kpi-tab-panel active" id="kpiMaintenanceTab">
+<p class="file-meta" id="kpiDataSourceNote" role="status">Checking source coverage…</p>
+<div class="panel" id="previewMaintenanceNotes" style="padding:14px;margin-bottom:16px"></div>
+<div class="data-control-actions"><button class="small-btn" id="undoLastActionBtn" type="button">↶ Undo last metric action</button><span class="file-meta" id="dataControlStatus">Metric recovery stays separate from the report archive.</span></div>
 <div class="section-title">
 <h3>Maintenance Performance</h3>
 <div class="kpi-metric-tools">
@@ -2147,8 +2156,8 @@ nav{
 </div>
 <div class="kpi-tab-panel" id="kpiOperationsTab">
 <div class="section-title production-live-title">
-<h3>🍕 Production — Current Shift Data</h3>
-<span>Hard-coded live baseline from verified shift reports</span>
+<h3>🍕 Production — Accepted Reports</h3>
+<span id="productionCoverage">Local records; source coverage being checked</span>
 </div>
 <div class="metric-grid production-live-kpis">
 <div class="metric-card"><div class="metric-label">Batches Made</div><div class="metric-number" id="prodKpiBatches">—</div></div>
@@ -2657,151 +2666,29 @@ nav{
 <div class="asset-detail" id="assetDetail"></div>
 </section>
 <section class="page" id="dataupload">
-<div class="page-head">
-<div>
-<h2>⬆ Data Upload</h2>
-<p>Choose the data type, select or drop a file, then upload. You can also enter one record manually.</p>
-</div>
-<div class="site-tag global-site-label">📍 All Locations</div>
-</div>
-<div class="simple-upload-note panel">
-<strong>ClickMaint summary reports:</strong>
-<span>If the report does not include a plant/location column, select the correct location at the top before uploading.</span>
-</div>
-<div class="import-area-grid simple-import-grid">
-<div class="import-area simple-import-card" data-import-area="workorders">
-<div class="import-area-head">
-<div><h3>🔧 Maintenance / Work Orders</h3><p>WO exports, backlog by assignee, history by assignee, and on-time/overdue reports.</p></div>
-<span class="update-status" id="workordersAreaStatus">Ready</span>
-</div>
-<div class="import-area-targets"><span>Total / Open / Completed</span><span>Overdue</span><span>Reactive / PM</span><span>Technician Backlog</span></div>
-<div aria-label="Drop or select a maintenance file" class="ops-area-drop simple-drop" id="workordersImportDrop" role="button" tabindex="0">
-<div class="simple-drop-icon">⬆</div><strong>Drag &amp; Drop File Here</strong><small>or click this box</small>
-</div>
-<input accept=".xlsx,.xls,.csv" hidden="" id="workordersImportFile" type="file"/>
-<div class="ops-area-file" id="workordersImportFileName">No file selected.</div>
-<div class="simple-upload-actions">
-<button class="small-btn select-file-btn" data-choose-file="workorders" type="button">Select File</button>
-<button class="primary-btn upload-file-btn" disabled="" id="workordersAnalyzeFileBtn" type="button">Upload File</button>
-</div>
-<details class="manual-entry">
-<summary>Paste text data instead</summary>
-<div class="plain-text-entry">
-<textarea aria-label="Paste maintenance data" class="plain-data-box" id="workordersPaste"></textarea>
-<button class="primary-btn text-submit-btn" id="workordersAnalyzeTextBtn" type="button">Submit Text Data</button>
-</div>
-</details>
-</div>
-<div class="import-area simple-import-card" data-import-area="production">
-<div class="import-area-head">
-<div><h3>🍕 Production</h3><p>Batches and pallets. Same Location + Date + Shift updates instead of duplicates.</p></div>
-<span class="update-status" id="productionAreaStatus">Ready</span>
-</div>
-<div class="import-area-targets"><span>Batches of Dough</span><span>Pallets Made</span></div>
-<div aria-label="Drop or select a production file" class="ops-area-drop simple-drop" id="productionImportDrop" role="button" tabindex="0">
-<div class="simple-drop-icon">⬆</div><strong>Drag &amp; Drop File Here</strong><small>or click this box</small>
-</div>
-<input accept=".xlsx,.xls,.csv" hidden="" id="productionImportFile" type="file"/>
-<div class="ops-area-file" id="productionImportFileName">No file selected.</div>
-<div class="simple-upload-actions">
-<button class="small-btn select-file-btn" data-choose-file="production" type="button">Select File</button>
-<button class="primary-btn upload-file-btn" disabled="" id="productionAnalyzeFileBtn" type="button">Upload File</button>
-</div>
-<details class="manual-entry">
-<summary>Paste text data instead</summary>
-<div class="plain-text-entry">
-<textarea aria-label="Paste production data" class="plain-data-box" id="productionPaste"></textarea>
-<button class="primary-btn text-submit-btn" id="productionAnalyzeTextBtn" type="button">Submit Text Data</button>
-</div>
-</details>
-</div>
-<div class="import-area simple-import-card" data-import-area="downtime">
-<div class="import-area-head">
-<div><h3>⏱ Downtime / Cost</h3><p>ClickMaint asset cost/downtime reports or WO-level downtime/cost corrections.</p></div>
-<span class="update-status" id="downtimeAreaStatus">Ready</span>
-</div>
-<div class="import-area-targets"><span>Downtime</span><span>Maintenance Cost</span><span>Asset Impact</span><span>Labor Detail</span></div>
-<div aria-label="Drop or select a downtime file" class="ops-area-drop simple-drop" id="downtimeImportDrop" role="button" tabindex="0">
-<div class="simple-drop-icon">⬆</div><strong>Drag &amp; Drop File Here</strong><small>or click this box</small>
-</div>
-<input accept=".xlsx,.xls,.csv" hidden="" id="downtimeImportFile" type="file"/>
-<div class="ops-area-file" id="downtimeImportFileName">No file selected.</div>
-<div class="simple-upload-actions">
-<button class="small-btn select-file-btn" data-choose-file="downtime" type="button">Select File</button>
-<button class="primary-btn upload-file-btn" disabled="" id="downtimeAnalyzeFileBtn" type="button">Upload File</button>
-</div>
-<details class="manual-entry">
-<summary>Paste text data instead</summary>
-<div class="plain-text-entry">
-<textarea aria-label="Paste downtime and cost data" class="plain-data-box" id="downtimePaste"></textarea>
-<button class="primary-btn text-submit-btn" id="downtimeAnalyzeTextBtn" type="button">Submit Text Data</button>
-</div>
-</details>
-</div>
-</div>
-<div class="section-title">
-<h3>Recovery</h3>
-<span>Metric resets are available from each KPI card's ⋮ menu</span>
-</div>
-<div class="panel data-control-panel">
-<div>
-<strong>Undo Last Action</strong>
-<p>Use the ⋮ menu on a KPI card to reset only that metric to 0. Undo restores the most recent metric reset or confirmed import.</p>
-</div>
-<div class="data-control-actions">
-<button class="small-btn" id="undoLastActionBtn" type="button">↶ Undo Last Action</button>
-</div>
-<div class="data-control-status" id="dataControlStatus">Recovery controls ready.</div>
-</div>
-<div class="panel import-preview-panel" hidden="" id="importPreview">
-<div class="update-head">
-<div>
-<h3>Import Preview</h3>
-<p class="import-preview-source" id="importPreviewSource">Nothing staged.</p>
-</div>
-<span class="update-status" id="importStageStatus">No import staged</span>
-</div>
-<div class="section-title"><h3 id="importPreviewType">—</h3><span>Review before committing</span></div>
-<div class="generated-location-summary" id="importPreviewStats"></div>
-<div class="detail-list" id="importPreviewDetails"></div>
-<div class="import-rejected" id="importRejectedDetails"></div>
-<div class="production-actions">
-<button class="small-btn" id="cancelImportBtn" type="button">Cancel Import</button>
-<button class="primary-btn" disabled="" id="confirmImportBtn" type="button">Confirm &amp; Update Dashboard</button>
-</div>
-</div>
-<div class="panel production-upload-panel manual-production-toggle" style="margin-top:18px">
-<div class="update-head">
-<div>
-<h3>Manual Production Entry</h3>
-<p>For one shift at a time. Location + Date + Shift is the unique key, so saving a correction updates that shift instead of adding to it.</p>
-</div>
-</div>
+<div class="page-head"><div><h2>⬆ Data Upload</h2><p>Keep original Word, PDF and other shift reports here. Saving a file does not update dashboard metrics.</p></div><div class="site-tag global-site-label">📍 All Locations</div></div>
+<div class="panel simple-upload-note"><strong>Published original reports.</strong><span>The cleared report catalog is below. Available originals have Open/Download links; remaining files are marked pending publication. Other originals remain pending privacy review. New uploads and label edits stay in this browser; they are not published and never update dashboard metrics. The database and daily updates are not connected yet.</span></div>
+<div class="panel" style="margin-bottom:18px">
 <div class="production-upload-grid">
-<label class="field"><span>Location</span><select id="productionLocation">
-<option value="">Select location</option><option value="maywood">Maywood</option><option value="la26">26th St.</option>
-<option value="indiana">Indiana</option><option value="sacramento">Sacramento</option><option value="newyork">New York</option>
-<option value="unassigned">Location unassigned</option>
-</select></label>
-<label class="field"><span>Production Date</span><input id="productionDate" type="date"/></label>
-<label class="field"><span>Shift</span><select id="productionShift">
-<option value="">Select shift</option><option value="1">Shift 1</option><option value="2">Shift 2</option><option value="3">Shift 3</option>
-</select></label>
-<label class="field"><span>Batches of Dough Made</span><input id="productionBatches" min="0" placeholder="0" step="1" type="number"/></label>
-<label class="field"><span>Pallets Made</span><input id="productionPallets" min="0" placeholder="0" step="1" type="number"/></label>
+<label class="field"><span>Facility</span><select id="archiveFacility"><option value="">Choose facility</option><option value="la26">LA 26th St.</option><option value="maywood">LA Maywood</option><option value="indiana">Indiana</option><option value="sacramento">Sacramento</option><option value="newyork">New York</option><option value="unassigned">Location not known</option></select></label>
+<label class="field"><span>Report date (leave blank if unknown)</span><input id="archiveReportDate" type="date"/></label>
+<label class="field"><span>Shift (as written on report)</span><input id="archiveShift" placeholder="1, 2, 3, M-A, M-C…" type="text"/></label>
+<label class="field"><span>Report type</span><select id="archiveKind"><option value="production">Production</option><option value="packaging">Packaging</option><option value="maintenance">Maintenance</option><option value="other">Other report</option></select></label>
+<label class="field"><span>Source / notes (optional)</span><input id="archiveNotes" type="text" placeholder="Original filename is preserved"/></label>
 </div>
-<div class="production-actions">
-<button class="small-btn" onclick="clearProductionEntry()" type="button">Clear</button>
-<button class="primary-btn" onclick="saveProductionEntry()" type="button">Save Production Data</button>
+<div class="ops-area-drop simple-drop" id="archiveDrop"><strong>Drop original reports here</strong><small>Original Word, PDF and other file formats are kept unchanged. Nothing is parsed into dashboard metrics. These labels apply to every file you select; add one facility/date/shift group at a time.</small><button class="primary-btn" id="archiveChoose" type="button">Choose original files</button></div>
+<input id="archiveFileInput" type="file" multiple hidden/>
+<div class="production-actions"><button class="primary-btn" id="archiveSaveDetails" type="button" hidden>Save archive labels</button><button class="small-btn" id="archiveCancelEdit" type="button" hidden>Cancel label edit</button></div>
+<div class="production-status" id="archiveStatus" role="status">Ready to archive originals. Dashboard metrics will not change.</div>
 </div>
-<div class="production-status" id="productionUploadStatus"></div>
-<div class="production-history" id="productionHistory"></div>
-</div>
-<div class="section-title">
-<h3>Import History</h3>
-<span id="dataLastUpdated">Data last updated: —</span>
-</div>
-<div class="panel"><div class="empty" id="dataUploadHistory">No confirmed imports yet.</div></div>
+<div class="panel" style="margin-bottom:18px"><div class="production-upload-grid">
+<label class="field"><span>Find a report</span><input id="archiveSearch" type="search" placeholder="Filename, notes, date…"/></label>
+<label class="field"><span>Shift</span><select id="archiveFilterShift"><option value="">All shifts</option></select></label>
+<label class="field"><span>Report type</span><select id="archiveFilterKind"><option value="">All types</option><option value="production">Production</option><option value="packaging">Packaging</option><option value="maintenance">Maintenance</option><option value="other">Other report</option></select></label>
+<label class="field"><span>From report date</span><input id="archiveFrom" type="date"/></label>
+<label class="field"><span>Through report date</span><input id="archiveTo" type="date"/></label>
+</div><p id="archiveCount">Loading local archive…</p></div>
+<div id="archiveList"></div>
 </section>
 <section class="page" id="safety">
 <div class="page-head">
@@ -3231,6 +3118,12 @@ function updateSiteLabels(){
 
 async function handleFiles(files,category,page){
   if(!files || !files.length)return;
+  if(category==="dataupload"){
+    if(typeof window.archiveReportFiles!=="function"){toast("Report archive is still loading. Try again shortly.");return;}
+    await window.archiveReportFiles(files);
+    if(page)showPage(page);
+    return;
+  }
 
   for(const file of files){
     await addFile(file,category);
@@ -4396,7 +4289,7 @@ function opsHours(value){
   return value==null?"—":`${Number(value).toFixed(1)}h`;
 }
 function opsPercent(n,d){
-  return d?`${Math.round(n/d*100)}%`:"—";
+  return n!=null&&d!=null&&Number.isFinite(Number(n))&&Number.isFinite(Number(d))&&Number(d)>0?`${Math.round(Number(n)/Number(d)*100)}%`:"—";
 }
 function opsDateString(value){
   if(value==null||value==="")return "";
@@ -4453,6 +4346,7 @@ function opsCanonical(record){
   const copy={...record};
   delete copy.importedAt;
   delete copy._providedFields;
+  delete copy.provenance;
   return JSON.stringify(copy,Object.keys(copy).sort());
 }
 function opsCurrentFilter(){
@@ -4555,8 +4449,8 @@ function mergeImportedSummaryIntoKpi(base,summary,site){
 
   const result={
     ...(base||{
-      source:"records",site,total:0,created:0,completed:0,open:0,overdue:0,reactive:0,preventive:0,
-      unassigned:0,pending:0,avgAge:null,cost:null,totalDowntime:null,
+      source:"records",site,total:null,created:null,completed:null,open:null,overdue:null,reactive:null,preventive:null,
+      unassigned:null,pending:null,avgAge:null,cost:null,totalDowntime:null,
       plannedDowntime:null,unplannedDowntime:null,completedOnTime:null,
       completedOverdue:null,completedNoDue:null,laborHours:null,
       backlogRows:[],assetImpactRows:[]
@@ -4615,9 +4509,9 @@ function legacyToKpi(site,d){
   const numHours=v=>{const n=parseFloat(String(v??"").replace(/[^\d.-]/g,""));return Number.isFinite(n)?n:null};
   const cost=opsNumber(d.cost);
   return {
-    source:"legacy",site,total:Number(d.workOrders)||0,created:d.createdYTD??d.workOrders??null,completed:d.completedYTD??null,
-    open:d.open??null,overdue:Number(d.overdue)||0,reactive:Number(d.reactive)||0,preventive:Number(d.preventive)||0,
-    unassigned:Number(d.notAssigned)||0,pending:d.pending??null,avgAge:Number(d.avgAge)||null,cost,
+    source:"legacy",site,total:opsNumber(d.workOrders),created:d.createdYTD??d.workOrders??null,completed:d.completedYTD??null,
+    open:d.open??null,overdue:opsNumber(d.overdue),reactive:opsNumber(d.reactive),preventive:opsNumber(d.preventive),
+    unassigned:opsNumber(d.notAssigned),pending:d.pending??null,avgAge:opsNumber(d.avgAge),cost,
     totalDowntime:numHours(d.totalDowntime),plannedDowntime:numHours(d.planned),unplannedDowntime:numHours(d.unplanned),
     mttr:numHours(d.mttr),mtbf:numHours(d.mtbf),backlogRows:d.assignees||[],
     completedOnTime:d.onTimeCompleted??null,completedOverdue:d.overdueCompleted??null,
@@ -4628,14 +4522,13 @@ function legacyToKpi(site,d){
 function combineKpis(parts){
   const valid=parts.filter(Boolean);
   if(!valid.length)return null;
-  const sum=k=>valid.reduce((t,p)=>t+(Number(p[k])||0),0);
-  const total=sum("total");
-  const weightedAge=total?valid.reduce((t,p)=>t+(Number(p.avgAge)||0)*(Number(p.total)||0),0)/total:null;
   const nullableSum=k=>valid.every(p=>p[k]!=null)?valid.reduce((t,p)=>t+(Number(p[k])||0),0):null;
+  const total=nullableSum("total");
+  const weightedAge=total&&valid.every(p=>p.avgAge!=null)?valid.reduce((t,p)=>t+Number(p.avgAge)*Number(p.total),0)/total:null;
   return {
-    source:valid.every(p=>p.source==="records")?"records":valid.every(p=>p.source==="legacy")?"legacy":"mixed",
-    total,created:nullableSum("created"),completed:nullableSum("completed"),open:nullableSum("open"),overdue:sum("overdue"),
-    reactive:sum("reactive"),preventive:sum("preventive"),unassigned:sum("unassigned"),pending:nullableSum("pending"),
+    source:valid.every(p=>p.source==="unavailable")?"unavailable":valid.every(p=>p.source==="records")?"records":valid.every(p=>p.source==="legacy")?"legacy":"mixed",
+    total,created:nullableSum("created"),completed:nullableSum("completed"),open:nullableSum("open"),overdue:nullableSum("overdue"),
+    reactive:nullableSum("reactive"),preventive:nullableSum("preventive"),unassigned:nullableSum("unassigned"),pending:nullableSum("pending"),
     avgAge:weightedAge,cost:nullableSum("cost"),totalDowntime:nullableSum("totalDowntime"),
     plannedDowntime:nullableSum("plannedDowntime"),unplannedDowntime:nullableSum("unplannedDowntime"),
     mttr:null,mtbf:null,
@@ -4705,13 +4598,14 @@ function calculateRecordKpis(records,range,site){
     completedOnTime:null,
     completedOverdue:null,
     completedNoDue:null,
-    laborHours:selected.map(r=>r.laborHours).filter(Number.isFinite).reduce((a,b)=>a+b,0)||null,
+    laborHours:selected.some(r=>Number.isFinite(r.laborHours))?selected.map(r=>r.laborHours).filter(Number.isFinite).reduce((a,b)=>a+b,0):null,
     assetImpactRows:[],
     backlogRows:Object.values(groups).sort((a,b)=>b.active-a.active),
     hasDueDates:selected.some(r=>!!r.dueDate)
   };
 }
 async function calculateKPIs(filters){
+  const empty=site=>({source:"unavailable",site,total:null,created:null,completed:null,open:null,overdue:null,reactive:null,preventive:null,unassigned:null,pending:null,avgAge:null,cost:null,totalDowntime:null,plannedDowntime:null,unplannedDowntime:null,completedOnTime:null,completedOverdue:null,completedNoDue:null,laborHours:null,assetImpactRows:[],backlogRows:[]});
   const records=await opsGetAll(OPS_STORES.workOrders);
   const range=opsRange(filters.period,filters.date);
   const sites=currentSite==="all"?KPI_SITES:[currentSite];
@@ -4720,13 +4614,7 @@ async function calculateKPIs(filters){
     const rowKpi=calculateRecordKpis(records,range,site);
 
     if(filters.period!=="YTD"){
-      const base=rowKpi||{
-        source:"records",site,total:0,created:0,completed:0,open:0,overdue:0,
-        reactive:0,preventive:0,unassigned:0,pending:0,avgAge:null,cost:null,
-        totalDowntime:null,plannedDowntime:null,unplannedDowntime:null,
-        completedOnTime:null,completedOverdue:null,completedNoDue:null,
-        laborHours:null,assetImpactRows:[],backlogRows:[]
-      };
+      const base=rowKpi||empty(site);
       return applyMetricResetsToKpi(base,site);
     }
 
@@ -4740,43 +4628,36 @@ async function calculateKPIs(filters){
       }
     }
 
-    const base=rowKpi||legacyKpi;
+    const base=rowKpi||legacyKpi||empty(site);
     const merged=mergeImportedSummaryIntoKpi(base,storedSummary,site);
     return applyMetricResetsToKpi(merged,site);
   }))).filter(Boolean);
 
-  return combineKpis(parts)||{
-    source:"records",total:0,created:0,completed:0,open:0,overdue:0,
-    reactive:0,preventive:0,unassigned:0,pending:0,avgAge:null,cost:null,
-    totalDowntime:null,plannedDowntime:null,unplannedDowntime:null,
-    completedOnTime:null,completedOverdue:null,completedNoDue:null,
-    laborHours:null,assetImpactRows:[],backlogRows:[]
-  };
+  return combineKpis(parts)||empty(currentSite);
 }
 async function calculateProduction(filters){
-  // Always include the temporary live production baseline in calculations.
-  // IndexedDB records with the same Location + Date + Shift override the baseline,
-  // so future uploads/corrections still work without double-counting.
   const stored=await opsGetAll(OPS_STORES.production);
-  const merged=new Map();
-  for(const r of stored){
-    const key=r.key||`${r.location}|${r.date}|${r.shift}`;
-    merged.set(key,r);
-  }
-  // For the temporary live version, verified hard-coded records are authoritative
-  // so stale/zero IndexedDB records cannot overwrite the live baseline.
-  for(const r of HARDCODED_PRODUCTION_RECORDS){
-    const key=`${r.location}|${r.date}|${r.shift}`;
-    merged.set(key,{...r,key});
-  }
-  const records=[...merged.values()];
   const range=opsRange(filters.period,filters.date);
-  const selected=records.filter(r=>(currentSite==="all"||r.location===currentSite)&&opsInRange(r.date,range));
-  return {
-    batches:selected.reduce((t,r)=>t+(Number(r.batches)||0),0),
-    pallets:selected.reduce((t,r)=>t+(Number(r.pallets)||0),0)
-  };
+  const candidates=stored.filter(r=>!OpsDataCore.isHistorical(r)&&(currentSite==="all"||r.location===currentSite));
+  const selected=[],rejected=[];
+  for(const record of candidates){
+    try{const normalized=OpsDataCore.normalizeProduction(record);if(opsInRange(normalized.date,range))selected.push(normalized);}
+    catch(error){rejected.push({key:record.key,reason:error.message});}
+  }
+  const grouped=new Map();
+  selected.forEach(record=>{const rows=grouped.get(record.key)||[];rows.push(record);grouped.set(record.key,rows);});
+  const accepted=[];
+  for(const [key,rows] of grouped){
+    if(rows.length>1)rejected.push({key,reason:"Multiple saved records identify the same normalized shift; review required"});
+    else accepted.push(rows[0]);
+  }
+  return {...OpsDataCore.aggregateProduction(accepted),coverage:OpsDataCore.coverage(accepted,filters.date),rejected};
 }
+function productionMetricText(metric,suffix=""){
+  if(metric.value==null)return "—";
+  return `${metric.value.toLocaleString()}${suffix}${metric.partial?" (partial)":""}`;
+}
+
 function renderBacklog(kpi){
   const body=document.getElementById("backlogRows");
   if(!body)return;
@@ -4806,9 +4687,9 @@ function renderProductionLiveDetails(records){
   const el=document.getElementById("productionLiveDetails");
   if(!el)return;
   const esc=v=>escapeHTML(String(v??"—"));
-  const fmt=n=>Number(n||0).toLocaleString();
+  const fmt=n=>n==null?"—":Number(n).toLocaleString();
   const detail=(label,value)=>`<div class="production-detail"><b>${esc(label)}</b>${value}</div>`;
-  const byFacility={la26:[],maywood:[]};
+  const byFacility=Object.fromEntries(KPI_SITES.map(site=>[site,[]]));
   records.forEach(r=>{if(byFacility[r.location])byFacility[r.location].push(r)});
   const facilityHTML=(key,title)=>{
     const rows=byFacility[key].sort((a,b)=>a.date.localeCompare(b.date)||a.shift.localeCompare(b.shift));
@@ -4821,12 +4702,12 @@ function renderProductionLiveDetails(records){
           detail("Supervisor",esc(r.productionLead)),detail("Product / Area",esc(r.productLine)),
           detail("Inventory",`${fmt(r.oilInventoryPallets)} pallets 30oz Oil; ${fmt(r.withoutOilMBPallets+r.withoutOilMCPallets)} pallets 30oz w/o`),
           detail("Outbound Loads",`13003: ${fmt(r.load13003Pallets)} pallets; 9005: ${fmt(r.load9005Pallets)} pallets`),
-          detail("Waste",`${fmt(r.doughWasteLbs)} lbs dough; ${r.plasticWasteLbs||0} lbs plastic; ${fmt(r.boxWaste)} boxes`),detail("Issues",esc(r.issues))
+          detail("Waste",`${fmt(r.doughWasteLbs)} lbs dough; ${fmt(r.plasticWasteLbs)} lbs plastic; ${fmt(r.boxWaste)} boxes`),detail("Issues",esc(r.issues))
         ];
       }else{
-        const output=[r.batches?`${fmt(r.batches)} batches`:"",r.mixes?`${fmt(r.mixes)} mixes`:"",r.pallets?`${fmt(r.pallets)} pallets made`:""].filter(Boolean).join(" | ")||"—";
+        const output=[r.batches!=null?`${fmt(r.batches)} batches`:"",r.mixes!=null?`${fmt(r.mixes)} mixes`:"",r.pallets!=null?`${fmt(r.pallets)} pallets made`:""].filter(Boolean).join(" | ")||"—";
         const staffing=r.location==="la26"?`${fmt(r.totalEmployees)} total — ${fmt(r.productionEmployees)} Production, ${fmt(r.packingEmployees)} Packing, ${fmt(r.smallRoomEmployees)} Small Room, ${fmt(r.smallPackingEmployees)} Small Packing, ${fmt(r.sanitationEmployees)} Sanitation, ${fmt(r.tempEmployees)} Temps${r.totalLaborHours?` | ${fmt(r.totalLaborHours)} labor hours`:""}`:`${fmt(r.totalEmployees)} total${r.regularEmployees!=null?` — ${fmt(r.regularEmployees)} employees, ${fmt(r.tempEmployees)} temps`:""}`;
-        cells=[detail("Lead",esc(r.productionLead)),detail("Product",esc(r.productLine)),detail("Output",output),detail("Staffing",staffing),detail("Waste",`${fmt(r.doughWasteLbs)} lbs dough; ${r.plasticWasteLbs||0} lbs plastic; ${fmt(r.ingredientWasteLbs)} lbs ingredients`)];
+        cells=[detail("Lead",esc(r.productionLead)),detail("Product",esc(r.productLine)),detail("Output",output),detail("Staffing",staffing),detail("Waste",`${fmt(r.doughWasteLbs)} lbs dough; ${fmt(r.plasticWasteLbs)} lbs plastic; ${fmt(r.ingredientWasteLbs)} lbs ingredients`)];
         if(r.dividerSpeed!=null||r.spiralSpeed!=null)cells.push(detail("Equipment",`Divider ${r.dividerSpeed??"—"} | Spiral ${r.spiralSpeed??"—"}${r.spiralTempF!=null?` | Spiral temp ${r.spiralTempF}°F`:""}`));
         if(r.outsideTempF!=null||r.defrozeTempF!=null)cells.push(detail("Temperatures",`Outside${r.outsideTempTime?` (${esc(r.outsideTempTime)})`:""}: ${r.outsideTempF??"—"}°F | Defroze: ${r.defrozeTempF??"—"}°F`));
         if(r.bin1Lbs!=null||r.bin2Lbs!=null)cells.push(detail("Silo Flour Levels",`Bin #1: ${fmt(r.bin1Lbs)} lbs | Bin #2: ${fmt(r.bin2Lbs)} lbs`));
@@ -4837,24 +4718,20 @@ function renderProductionLiveDetails(records){
       return `<div class="production-shift-card ${isLog?"production-logistics":""}"><div class="production-shift-head"><strong>${esc(isLog?`Shift ${r.shift} — Inventory / Logistics`:`Shift ${r.shift}`)}</strong><span>${esc(r.date)}</span></div><div class="production-detail-grid">${cells.join("")}</div>${note?`<div class="production-note"><strong>Operational Notes:</strong> ${esc(note)}</div>`:""}</div>`;
     }).join("")}</div>`;
   };
-  el.innerHTML=facilityHTML("la26","26th Street Location")+facilityHTML("maywood","Maywood Location (Lamonica's)");
+  el.innerHTML=Object.keys(byFacility).map(site=>facilityHTML(site,SITE_NAMES[site]||site)).join("")||'<div class="empty">No accepted production records for this filter.</div>';
 }
 
 async function renderDashboard(){
   const filters=opsCurrentFilter();
   const [kpi,production]=await Promise.all([calculateKPIs(filters),calculateProduction(filters)]);
   const selectedSummary=currentSite==="all"?null:await effectiveSummaryFor(currentSite);
-  const liveRange=opsRange(filters.period,filters.date);
-  const liveProduction=HARDCODED_PRODUCTION_RECORDS.filter(r=>(currentSite==="all"||r.location===currentSite)&&opsInRange(r.date,liveRange));
-  opsText("prodKpiBatches",liveProduction.reduce((t,r)=>t+(Number(r.batches)||0),0).toLocaleString());
-  opsText("prodKpiMixes",liveProduction.reduce((t,r)=>t+(Number(r.mixes)||0),0).toLocaleString());
-  opsText("prodKpiPallets",liveProduction.reduce((t,r)=>t+(Number(r.pallets)||0),0).toLocaleString());
-  opsText("prodKpiStaffing",liveProduction.filter(r=>r.recordType==="production").reduce((t,r)=>t+(Number(r.totalEmployees)||0),0).toLocaleString());
-  opsText("prodKpiDoughWaste",`${liveProduction.reduce((t,r)=>t+(Number(r.doughWasteLbs)||0),0).toLocaleString()} lbs`);
-  opsText("prodKpiPlasticWaste",`${liveProduction.reduce((t,r)=>t+(Number(r.plasticWasteLbs)||0),0).toLocaleString()} lbs`);
+  const liveProduction=production.records;
+  const fields={prodKpiBatches:"batches",prodKpiMixes:"mixes",prodKpiPallets:"pallets",prodKpiStaffing:"totalEmployees",prodKpiDoughWaste:"doughWasteLbs",prodKpiPlasticWaste:"plasticWasteLbs",homeBatches:"batches",homePallets:"pallets"};
+  Object.entries(fields).forEach(([id,field])=>opsText(id,productionMetricText(production.metrics[field],field.endsWith("Lbs")?" lbs":"")));
+  const coverage=production.coverage;
+  opsText("productionCoverage",coverage.latest?`Local accepted records: ${coverage.earliest} through ${coverage.latest}. ${coverage.status==="historical"?"Historical coverage; newer reports are not confirmed.":coverage.status==="future"?"Contains future-dated reports; review dates.":"Coverage does not confirm every shift was reported."}`:"No accepted production reports for this filter. Historical fixtures are excluded.");
+  if(production.rejected.length){const coverageNote=document.getElementById("productionCoverage");if(coverageNote)coverageNote.textContent+=` ${production.rejected.length} validation issue(s); affected saved records excluded pending review.`;}
   renderProductionLiveDetails(liveProduction);
-  opsText("homeBatches",production.batches.toLocaleString());
-  opsText("homePallets",production.pallets.toLocaleString());
   opsText("homeCompleted",kpi.completed);
   opsText("homeOverdue",kpi.pending);
   opsText("homeDowntime",opsHours(kpi.totalDowntime));
@@ -4890,7 +4767,11 @@ async function renderDashboard(){
   applyKpiMetricVisibility();
 
   const note=document.getElementById("kpiDataSourceNote");
-  if(note)note.textContent=kpi.source==="legacy"?"Legacy summary data":kpi.source==="mixed"?"Imported records + legacy fallback":"Imported source records";
+  if(note){
+    const sourceLabel=kpi.source==="unavailable"?"No accepted maintenance data for this period":kpi.source==="legacy"?"Historical legacy summary; not live":kpi.source==="mixed"?"Imported records and summary/legacy fallback; mixed coverage":"Imported source records; local only";
+    const provenance=selectedSummary?.provenance;
+    note.textContent=sourceLabel+(provenance?` • Latest summary source: ${provenance.sourceName}; imported ${provenance.importedAt}. Report coverage must be checked against source dates.`:" • No verified automatic sync or complete reporting-period coverage.");
+  }
 
   document.querySelectorAll(".home-period-filter button").forEach(b=>b.classList.toggle("active",b.textContent.trim().toLowerCase().startsWith(filters.period.toLowerCase().slice(0,4))));
   document.querySelectorAll("#authoritativeKpiFilter button").forEach(b=>b.classList.toggle("active",b.dataset.period===filters.period));
@@ -5590,31 +5471,48 @@ function parseWorkOrderRows(headers,rows){
   });
   return {records:[...byId.values()],rejected,fatal:""};
 }
+function opsProductionDate(value){
+  // Preserve supported spreadsheet dates, but never let Date roll textual invalid dates forward.
+  const text=String(value??"").trim();
+  if(!(value instanceof Date)&&typeof value!=="number"&&!/^\d{4}-\d{1,2}-\d{1,2}$/.test(text)&&!/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(text))return "";
+  try{return OpsDataCore.date(opsDateString(value));}catch(error){return "";}
+}
 function parseProductionRows(headers,rows){
   const {find}=opsHeaderMap(headers);
+  const outputHeaders=headers.map(header=>String(header??"").replace(/[_-]+/g," "));
   const idx={
     location:find(["location","site","facility","plant"]),date:find(["production date","date"]),
-    shift:find(["shift"]),batches:find(["batches of dough","batches","batch count"]),pallets:find(["pallets made","pallets","pallet count"])
+    shift:find(["shift"]),batches:opsHeaderIndex(outputHeaders,["batches of dough","batches","batch count"]),mixes:opsHeaderIndex(outputHeaders,["mixes made","mixes","mix count"]),pallets:opsHeaderIndex(outputHeaders,["pallets made","pallets","pallet count"])
   };
-  const missing=Object.entries(idx).filter(([,i])=>i<0).map(([k])=>k);
+  const missing=["location","date","shift"].filter(field=>idx[field]<0);
+  if([idx.batches,idx.mixes,idx.pallets].every(index=>index<0))missing.push("batches, mixes or pallets made");
   if(missing.length)return {records:[],rejected:[],fatal:`Missing required production columns: ${missing.join(", ")}`};
-  const byKey=new Map(),rejected=[];
+  const byKey=new Map(),sourceShifts=new Map(),rejected=[];
+  let shiftCollision=false;
   rows.forEach((row,rowIndex)=>{
-    const location=opsLocation(row[idx.location]),date=opsDateString(row[idx.date]);
+    const location=opsLocation(row[idx.location]),date=opsProductionDate(row[idx.date]);
     const shift=String(row[idx.shift]??"").trim().replace(/^shift\s*/i,"");
-    const batches=opsNumber(row[idx.batches]),pallets=opsNumber(row[idx.pallets]);
+    const readQuantity=field=>idx[field]<0||String(row[idx[field]]??"").trim()===""?null:opsNumber(row[idx[field]]);
+    const batches=readQuantity("batches"),mixes=readQuantity("mixes"),pallets=readQuantity("pallets");
     const problems=[];
     if(!location)problems.push("unrecognized location");
     if(!date)problems.push("unrecognized date");
     if(!shift)problems.push("missing shift");
-    if(batches==null)problems.push("invalid batches");
-    if(pallets==null)problems.push("invalid pallets");
+    for(const [field,value] of Object.entries({batches,mixes,pallets})){
+      if(idx[field]>=0&&String(row[idx[field]]??"").trim()!==""&&value==null)problems.push(`invalid ${field}`);
+    }
+    if(batches==null&&mixes==null&&pallets==null)problems.push("no reported production quantities");
     if(problems.length){rejected.push({row:rowIndex+2,reason:problems.join("; ")});return}
-    const key=`${location}|${date}|${shift}`;
-    if(byKey.has(key))rejected.push({row:rowIndex+2,reason:`duplicate production key ${key}; last valid row used`});
-    byKey.set(key,{key,location,date,shift,batches,pallets});
+    try{
+      const normalized=OpsDataCore.normalizeProduction({location,date,shift,batches,mixes,pallets,_providedFields:["key","location","date","shift",...["batches","mixes","pallets"].filter(field=>idx[field]>=0)]});
+      const key=normalized.key;
+      if(sourceShifts.has(key)&&sourceShifts.get(key)!==shift){shiftCollision=true;return;}
+      sourceShifts.set(key,shift);
+      if(byKey.has(key))rejected.push({row:rowIndex+2,reason:`duplicate production key ${key}; last valid row used`});
+      byKey.set(key,normalized);
+    }catch(error){rejected.push({row:rowIndex+2,reason:error.message});}
   });
-  return {records:[...byKey.values()],rejected,fatal:""};
+  return {records:shiftCollision?[]:[...byKey.values()],rejected,fatal:shiftCollision?"Different shift labels identify the same production shift. Review duplicate or corrected rows before importing.":""};
 }
 const OPS_IMPORT_AREAS={
   workorders:{reportType:"Work Orders / Maintenance",store:OPS_STORES.workOrders,dropId:"workordersImportDrop",inputId:"workordersImportFile",fileNameId:"workordersImportFileName",statusId:"workordersAreaStatus",analyzeFileId:"workordersAnalyzeFileBtn",textId:"workordersPaste",analyzeTextId:"workordersAnalyzeTextBtn"},
@@ -5656,16 +5554,34 @@ function mergeWorkOrderImport(existing,incoming){
   delete merged.importedAt;
   return merged;
 }
+function mergeProductionImport(existing,incoming){
+  const merged=existing&&!OpsDataCore.isHistorical(existing)?{...existing}:{};
+  for(const field of incoming._providedFields||Object.keys(incoming)){
+    if(field!=="_providedFields"&&Object.prototype.hasOwnProperty.call(incoming,field))merged[field]=incoming[field];
+  }
+  delete merged._providedFields;
+  delete merged.importedAt;
+  const normalized=OpsDataCore.normalizeProduction(merged);
+  // Retain an existing browser primary key so an ordinal correction cannot create a second row.
+  if(existing&&!OpsDataCore.isHistorical(existing)){normalized.logicalKey=normalized.key;normalized.key=existing.key;}
+  return normalized;
+}
 async function previewAgainstStore(area,records){
   const config=opsImportArea(area);
   const existing=await opsGetAll(config.store);
   const isProduction=area==="production";
-  const keyOf=r=>isProduction?r.key:r.id;
-  const map=new Map(existing.map(r=>[keyOf(r),r]));
+  const keyOf=r=>isProduction?OpsDataCore.normalizeProduction(r).key:r.id;
+  const map=new Map(),collisions=new Set();
+  existing.forEach(record=>{
+    if(isProduction&&OpsDataCore.isHistorical(record))return;
+    let key;try{key=keyOf(record);}catch(error){return;}
+    if(map.has(key))collisions.add(key);else map.set(key,record);
+  });
   let added=0,updated=0,unchanged=0;
   const preparedRecords=records.map(incoming=>{
+    if(collisions.has(keyOf(incoming)))throw new Error("Multiple saved records identify this shift. Review them before importing a correction.");
     const old=map.get(keyOf(incoming));
-    const prepared=isProduction?{...incoming}:mergeWorkOrderImport(old,incoming);
+    const prepared=isProduction?mergeProductionImport(old,incoming):mergeWorkOrderImport(old,incoming);
     delete prepared._providedFields;
     if(!old)added++;
     else if(opsCanonical(old)===opsCanonical(prepared))unchanged++;
@@ -5741,6 +5657,10 @@ async function analyzeOpsImport(area,sourceKind="file"){
     if(sourceKind==="file"){
       const file=stagedOpsFiles[area];
       if(!file)throw new Error("Select or drop a file in this area first.");
+      if(area==="production"&&/\.(docx|doc)$/i.test(file.name)){
+        const staged=OpsDataCore.stageWordAttachment({filename:file.name,size:file.size,lastModified:file.lastModified});
+        throw new Error(`Word document held locally for template review. ${staged.reason}`);
+      }
       parsed=await fileRowsAndHeaders(file);
       sourceName=file.name;
     }else{
@@ -6133,10 +6053,11 @@ async function commitOpsImport(){
     }
     setOpsDataReset(false);
     const importedAt=new Date().toISOString();
+    const provenance={sourceName:p.sourceName,sourceKind:p.sourceKind,reportType:p.reportType,importedAt,dateRange:p.dateRange};
     if(p.mode==="summary"){
-      await opsPut(OPS_STORES.summaries,{site:p.summarySite,data:p.summaryData,updatedAt:importedAt});
+      await opsPut(OPS_STORES.summaries,{site:p.summarySite,data:{...p.summaryData,provenance},updatedAt:importedAt});
     }else{
-      for(const record of p.records)await opsPut(p.store,{...record,importedAt});
+      for(const record of p.records)await opsPut(p.store,{...record,importedAt,provenance:{...record.provenance,...provenance}});
     }
     const history={
       timestamp:importedAt,filename:p.sourceName,reportType:p.reportType,locations:p.locations,dateRange:p.dateRange,
@@ -6221,8 +6142,15 @@ window.saveProductionEntry=async function(){
   const batches=opsNumber(document.getElementById("productionBatches").value);
   const pallets=opsNumber(document.getElementById("productionPallets").value);
   if(!location||!date||!shift||batches==null||pallets==null){opsText("productionUploadStatus","Complete Location, Date, Shift, Batches and Pallets.");return}
-  const key=`${location}|${date}|${shift}`,old=await opsGet(OPS_STORES.production,key);
-  const record={key,location,date,shift,batches,pallets,importedAt:new Date().toISOString()};
+  const key=`${location}|${date}|${shift}`;
+  let old;
+  const existingRows=await opsGetAll(OPS_STORES.production);
+  const matching=existingRows.filter(row=>{try{return !OpsDataCore.isHistorical(row)&&OpsDataCore.normalizeProduction(row).key===OpsDataCore.normalizeProduction({location,date,shift}).key;}catch(error){return false;}});
+  if(matching.length>1){opsText("productionUploadStatus","Multiple saved records identify this shift. Review them before saving.");return;}
+  old=matching[0];
+  let record;
+  try{record=mergeProductionImport(old,{key,location,date,shift,batches,pallets,_providedFields:["key","location","date","shift","batches","pallets"]});record.importedAt=new Date().toISOString();record.provenance={sourceKind:"manual",sourceName:"Manual production entry",importedAt:record.importedAt};}
+  catch(error){opsText("productionUploadStatus",error.message);return;}
   await opsPut(OPS_STORES.production,record);
   const changed=!old?"added":opsCanonical(old)===opsCanonical(record)?"unchanged":"updated";
   const timestamp=new Date().toISOString();
@@ -6235,54 +6163,35 @@ window.renderProductionHistory=async function(){
   const rows=(await opsGetAll(OPS_STORES.production)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   const el=document.getElementById("productionHistory");
   if(!el)return;
-  el.innerHTML=rows.length?rows.map(r=>`<div class="production-history-row"><span>${escapeHTML(SITE_NAMES[r.location]||r.location)}</span><span>${r.date}</span><span>Shift ${escapeHTML(r.shift)}</span><span>${r.batches} batches</span><span>${r.pallets} pallets</span></div>`).join(""):"";
+  el.innerHTML=rows.length?rows.map(r=>`<div class="production-history-row"><span>${escapeHTML(SITE_NAMES[r.location]||r.location)}</span><span>${r.date}</span><span>Shift ${escapeHTML(r.shift)}</span><span>${r.batches??"—"} batches${r.mixes!=null?` / ${r.mixes} mixes`:""}</span><span>${r.pallets??"—"} pallets made</span></div>`).join(""):"";
 };
-/* Temporary seeded production data.
-   These records are hard-coded so the dashboard is populated immediately.
-   The normal upload/import system remains in place and can update the same keys later. */
-const HARDCODED_PRODUCTION_RECORDS=[
-  // ===== TEMPORARY LIVE PRODUCTION BASELINE — verified shift reports =====
-  // LA 26th St. — Costco Oil — 3rd Shift — 08/16/2026
-  {location:"la26",facility:"26th Street",date:"2026-08-16",shift:"3rd",recordType:"production",productionLead:"Maria Robles",productLine:"Costco Oil",batches:95,mixes:null,pallets:24,dividerSpeed:60,spiralSpeed:130,productionEmployees:5,packingEmployees:3,smallRoomEmployees:0,smallPackingEmployees:0,sanitationEmployees:0,tempEmployees:3,totalEmployees:8,doughWasteLbs:18,ingredientWasteLbs:0,plasticWasteLbs:2,outsideTempF:75,outsideTempTime:"8:30 PM",defrozeTempF:73,bin1Lbs:38510,bin2Lbs:0,freezerOilDough:360,freezerExport:0,freezerMexico:24,freezerNY:1416,issues:"None reported"},
-
-  // LA 26th St. — Costco Oil — 1st Shift — 08/17/2026
-  {location:"la26",facility:"26th Street",date:"2026-08-17",shift:"1st",recordType:"production",productionLead:"Francisco Sanchez",productLine:"Costco Oil",batches:41,mixes:null,pallets:10,dividerSpeed:60,spiralSpeed:130,productionEmployees:3,packingEmployees:1,smallRoomEmployees:1,smallPackingEmployees:0,sanitationEmployees:1,tempEmployees:5,totalEmployees:11,totalLaborHours:88,doughWasteLbs:20,ingredientWasteLbs:0,plasticWasteLbs:2,outsideTempF:66,outsideTempTime:"4:15 AM",defrozeTempF:69,bin1Lbs:25530,bin2Lbs:51380,freezerOilDough:321,freezerExport:0,freezerMexico:28,softDoughDowntimeMinutes:0,productionHours:4,sanitationHours:4,notes:"4 hours production and 4 hours sanitation/cleaning"},
-
-  // LA Maywood — M-C Production — 08/16/2026
-  // The source explicitly reports 70 MIXES, so do not silently count these as batches.
-  {location:"maywood",facility:"LA Maywood",date:"2026-08-16",shift:"M-C",recordType:"production",productionLead:"Sergio Carrillo",productLine:"30oz Without Oil",batches:0,mixes:70,pallets:0,flourLbs:31570,spiralTempF:-5,spiralSpeed:140,dividerSpeed:65,regularEmployees:5,tempEmployees:2,totalEmployees:7,doughWasteLbs:75,plasticWasteLbs:1.65,maintenanceStatus:"All equipment operating normally",personnelIssues:"Temp worker Osvaldo Rejalado called out due to a family emergency"},
-
-  // LA Maywood — M-A Production — 08/17/2026
-  {location:"maywood",facility:"LA Maywood",date:"2026-08-17",shift:"M-A",recordType:"production",productionLead:"Marta Valenzuela",productLine:"30oz With Oil",batches:70,mixes:null,pallets:0,flourAvailableLbs:53060,flourLbs:56240,spiralTempF:-5,spiralSpeed:140,dividerSpeed:65,totalEmployees:10,temp4amF:69,temp8amF:72,doughWasteLbs:70,plasticWasteLbs:3,ingredientWasteLbs:0,issues:"None reported"},
-
-  // LA Maywood — MC Inventory / Logistics — 08/16/2026
-  // Inventory/load pallets are deliberately NOT counted as Pallets Made.
-  {location:"maywood",facility:"LA Maywood",date:"2026-08-16",shift:"MC",recordType:"inventory-logistics",productionLead:"Jorge Salazar",productLine:"30oz w/o & Oil",batches:0,mixes:0,pallets:0,oilInventoryPallets:86,withoutOilMBPallets:1,withoutOilMBCount:45,withoutOilMCPallets:24,withoutOilMCCount:1080,load13003Pallets:3,load9005Pallets:13,doughWasteLbs:0,plasticWasteLbs:0,boxWaste:10,ingredientWasteLbs:0,issues:"None reported"}
-];
-
-async function seedHardcodedProduction(){
-  for(const r of HARDCODED_PRODUCTION_RECORDS){
-    const key=`${r.location}|${r.date}|${r.shift}`;
-    await opsPut(OPS_STORES.production,{
-      ...r,key,
-      importedAt:"2026-08-17T12:00:00.000Z",
-      source:"Temporary live production baseline"
-    });
-  }
-}
-
+/* Preserve user-entered legacy records without re-seeding historical fixtures. */
 async function migrateLegacyProduction(){
+  // Stage the entire legacy set before writing; never overwrite a corrected canonical identity.
+  const existingRows=await opsGetAll(OPS_STORES.production);
+  const existingIdentities=new Set(existingRows.map(row=>{
+    try{return OpsDataCore.normalizeProduction({location:row.location,date:row.date,shift:row.shift}).key;}
+    catch(error){return row.key;}
+  }));
   let legacy=[];try{legacy=JSON.parse(localStorage.getItem("lamonicasProductionRecords")||"[]")}catch(e){}
+  const candidates=new Map();
   for(const r of legacy){
     const location=opsLocation(r.location)||r.location;
-    const date=opsDateString(r.date),shift=String(r.shift||"").replace(/^Shift\s*/i,"");
+    const date=opsProductionDate(r.date),shift=String(r.shift||"").replace(/^Shift\s*/i,"");
     if(!location||!date||!shift)continue;
-    const key=`${location}|${date}|${shift}`;
-    const existing=await opsGet(OPS_STORES.production,key);
-    if(existing)continue;
-    await opsPut(OPS_STORES.production,{key,location,date,shift,batches:Number(r.batches)||0,pallets:Number(r.pallets)||0,importedAt:r.updatedAt||new Date().toISOString()});
+    const value=field=>r[field]==null||String(r[field]).trim()===""?null:Number(r[field]);
+    try{
+      const normalized=OpsDataCore.normalizeProduction({location,date,shift,batches:value("batches"),mixes:value("mixes"),pallets:value("pallets"),importedAt:r.updatedAt||new Date().toISOString()});
+      const rows=candidates.get(normalized.key)||[];rows.push(normalized);candidates.set(normalized.key,rows);
+    }catch(error){console.warn("Legacy production row requires review",location,date,shift,error.message);}
   }
-  await seedHardcodedProduction();
+  for(const [key,rows] of candidates){
+    if(existingIdentities.has(key))continue;
+    if(rows.length>1){console.warn("Conflicting legacy production shifts require review; nothing imported",key);continue;}
+    await opsPut(OPS_STORES.production,rows[0]);
+    existingIdentities.add(key);
+  }
+  // Historical fixtures are intentionally never seeded into authoritative records.
 }
 
 function updateOpsSubmitState(area){
@@ -6441,341 +6350,9 @@ setupKpiMetricControls();
 setupOpsImportUI();
 document.addEventListener("DOMContentLoaded",()=>initOpsDataSystem().catch(error=>{console.error(error);toast(`Data system error: ${error.message}`)}));
 </script>
-<script>
-/* ===== LIVE HARDCODED PRODUCTION BASELINE — 2026-08-17 ===== */
-window.LAMONICAS_LIVE_PRODUCTION = [
-  {
-    location:"la26", locationLabel:"26th Street", date:"2026-08-16", shift:"3rd",
-    lead:"Maria Robles", product:"Costco Oil", outputType:"batches",
-    batches:95, mixes:null, palletsMade:24, totalWorkers:8,
-    productionWorkers:5, packingWorkers:3, smallRoomWorkers:0, smallPackingWorkers:0, sanitationWorkers:0, tempWorkers:3,
-    laborHours:null, doughWaste:18, plasticWaste:2, ingredientWaste:0,
-    freezer:{oil:360,mx:24,ny:1416,export:0},
-    notes:"No incidents, quality issues, or overtime reported."
-  },
-  {
-    location:"la26", locationLabel:"26th Street", date:"2026-08-17", shift:"1st",
-    lead:"Francisco Sanchez", product:"Costco Oil", outputType:"batches",
-    batches:41, mixes:null, palletsMade:10, totalWorkers:11,
-    productionWorkers:3, packingWorkers:1, smallRoomWorkers:1, smallPackingWorkers:0, sanitationWorkers:1, tempWorkers:5,
-    laborHours:88, doughWaste:20, plasticWaste:2, ingredientWaste:0,
-    freezer:{oil:321,mx:28,ny:null,export:0},
-    notes:"4 hours cleaning / sanitation and 4 hours production."
-  },
-  {
-    location:"maywood", locationLabel:"LA Maywood", date:"2026-08-16", shift:"M-C / MC",
-    lead:"Jorge Salazar", product:"30oz without oil", outputType:"mixes",
-    batches:null, mixes:70, palletsMade:null, totalWorkers:7,
-    regularWorkers:5, tempWorkers:2,
-    doughWaste:75, plasticWaste:1.65, ingredientWaste:null, boxWaste:10,
-    inventory:{oil30oz:86, withoutOil:25},
-    loads:[{load:"13003",pallets:3},{load:"9005",pallets:13}],
-    notes:"Osvaldo Rejalado (Temp) called out for a family emergency."
-  },
-  {
-    location:"maywood", locationLabel:"LA Maywood", date:"2026-08-17", shift:"M-A",
-    lead:"Marta Valenzuela", product:"30oz with oil", outputType:"batches",
-    batches:70, mixes:null, palletsMade:null, totalWorkers:10,
-    doughWaste:70, plasticWaste:3, ingredientWaste:0,
-    notes:"No safety, quality, maintenance, or personnel issues reported."
-  }
-];
 
-function liveProductionRowsForSite(){
-  const site=(document.getElementById("siteSelector")||{}).value || "all";
-  return window.LAMONICAS_LIVE_PRODUCTION.filter(r=>site==="all" || r.location===site);
-}
-function fmtLive(v,suffix=""){ return (v===null||v===undefined||v==="") ? "—" : `${v}${suffix}`; }
 
-function forceLiveProductionKPIs(){
-  const rows=liveProductionRowsForSite();
-  const batches=rows.reduce((s,r)=>s+(Number(r.batches)||0),0);
-  const pallets=rows.reduce((s,r)=>s+(Number(r.palletsMade)||0),0);
 
-  // Fill all obvious home/KPI elements by ID/name/text without changing layout.
-  const batchSelectors=['#homeBatches','#batchesMade','#batchesKpi','#productionBatches','#prodBatches'];
-  const palletSelectors=['#homePallets','#palletsMade','#palletsKpi','#productionPallets','#prodPallets'];
-  batchSelectors.forEach(s=>document.querySelectorAll(s).forEach(el=>el.textContent=batches));
-  palletSelectors.forEach(s=>document.querySelectorAll(s).forEach(el=>el.textContent=pallets));
-
-  document.querySelectorAll('.metric-card,.kpi-card').forEach(card=>{
-    const label=(card.querySelector('.metric-label')?.textContent || card.textContent || '').toLowerCase();
-    const number=card.querySelector('.metric-number,.kpi-value,.value,strong');
-    if(!number) return;
-    if(label.includes('batches of dough made') || label.includes('total batches made')) number.textContent=batches;
-    if(label.includes('pallets made') || label.includes('total pallets made')) number.textContent=pallets;
-  });
-
-  renderLiveProductionDetails(rows);
-}
-
-function renderLiveProductionDetails(rows){
-  let host=document.getElementById('liveProductionBaseline');
-  if(!host){
-    const kpi=document.getElementById('kpi');
-    if(!kpi) return;
-    host=document.createElement('div');
-    host.id='liveProductionBaseline';
-    host.className='panel';
-    host.style.marginTop='18px';
-    kpi.appendChild(host);
-  }
-
-  const cards=rows.map(r=>{
-    const output = r.batches!=null ? `${r.batches} batches${r.palletsMade!=null?`, ${r.palletsMade} pallets made`:''}` :
-                   r.mixes!=null ? `${r.mixes} mixes` : '—';
-    const staffing = r.totalWorkers!=null ? `${r.totalWorkers} total workers` : '—';
-    let extra='';
-    if(r.location==='la26'){
-      extra=`<div><b>Freezer Ending Inventory:</b> ${fmtLive(r.freezer?.oil)} Oil, ${fmtLive(r.freezer?.mx)} MX, ${fmtLive(r.freezer?.ny)} NY, ${fmtLive(r.freezer?.export)} Export pallets</div>`;
-      if(r.laborHours) extra+=`<div><b>Labor Hours:</b> ${r.laborHours}</div>`;
-    } else if(r.shift==='M-C / MC'){
-      extra=`<div><b>Inventory & Loads:</b> 86 pallets 30oz oil inventory, 25 pallets 30oz w/o; Load 13003 (3 pallets), Load 9005 (13 pallets)</div>`;
-    }
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff">
-      <div style="font-weight:850;font-size:15px">${r.locationLabel} — ${r.shift} Shift — ${r.date.slice(5).replace('-','/').replace(/^(\d\d)\/(\d\d)$/,'$1/$2')}/2026</div>
-      <div style="margin-top:8px;line-height:1.65;font-size:13px">
-        <div><b>Lead:</b> ${r.lead}</div>
-        <div><b>Product:</b> ${r.product}</div>
-        <div><b>Output:</b> ${output}</div>
-        <div><b>Staffing:</b> ${staffing}</div>
-        <div><b>Waste:</b> ${fmtLive(r.doughWaste,' lbs')} dough, ${fmtLive(r.plasticWaste,' lbs')} plastic${r.ingredientWaste!=null?`, ${r.ingredientWaste} lbs ingredients`:''}${r.boxWaste!=null?`, ${r.boxWaste} boxes`:''}</div>
-        ${extra}
-        <div><b>Notes:</b> ${r.notes}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  host.innerHTML=`<h3 style="margin:0 0 5px">🍕 Production — Live Hard-Coded Baseline</h3>
-    <p style="margin:0 0 14px;color:var(--muted);font-size:12px">26th Street and LA Maywood production data through August 17, 2026.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px">${cards || '<div class="empty">No production records for this location.</div>'}</div>`;
-}
-
-// Run after existing renderers, and again when location changes.
-window.addEventListener('load',()=>setTimeout(forceLiveProductionKPIs,300));
-document.addEventListener('change',e=>{
-  if(e.target && e.target.id==='siteSelector') setTimeout(forceLiveProductionKPIs,80);
-});
-</script>
-<script>
-/* ===== AUTHORITATIVE LIVE PRODUCTION OVERALLS — USER SUPPLIED 2026-08-17 ===== */
-window.LAMONICAS_PRODUCTION_OVERALLS = {
-  la26: {
-    locationLabel: "26th Street",
-    batches: 136,
-    palletsMade: 34,
-    doughWaste: 38,
-    plasticWaste: 4,
-    flourLeft: 76910,
-    bin1: 25530,
-    bin2: 51380,
-    freezerOil: 321,
-    freezerMexico: 28,
-    freezerExport: 0
-  },
-  maywood: {
-    locationLabel: "LA Maywood",
-    batchesMixes: 140,
-    batches: 140,
-    palletsMade: 25,
-    oilInventoryPallets: 86,
-    withoutOilInventoryPallets: 25,
-    withoutOilCount: 1125,
-    palletsShipped: 16,
-    load13003: 3,
-    load9005: 13,
-    doughWaste: 145,
-    plasticWaste: 4.65,
-    boxWaste: 10,
-    flourAvailable: 53060
-  }
-};
-
-function applyAuthoritativeProductionOverall(){
-  const site = (document.getElementById("siteSelector") || {}).value || "all";
-  const d = window.LAMONICAS_PRODUCTION_OVERALLS;
-
-  let batches = 0, pallets = 0;
-  if(site === "la26"){
-    batches = d.la26.batches;
-    pallets = d.la26.palletsMade + d.maywood.palletsMade;
-  } else if(site === "maywood"){
-    batches = d.maywood.batchesMixes;
-    pallets = 25; // Maywood pallet value requested for live KPI: 1 MB + 24 MC
-  } else if(site === "all"){
-    batches = d.la26.batches + d.maywood.batchesMixes;
-    pallets = d.la26.palletsMade + d.maywood.palletsMade;
-  }
-
-  document.querySelectorAll('.metric-card,.kpi-card').forEach(card=>{
-    const label=(card.querySelector('.metric-label')?.textContent || card.textContent || '').toLowerCase();
-    const number=card.querySelector('.metric-number,.kpi-value,.value,strong');
-    if(!number) return;
-    if(label.includes('batches of dough made') || label.includes('total batches made') || label.includes('batches / mixes made')) number.textContent=batches;
-    if(label.includes('pallets made') || label.includes('total pallets made')) number.textContent=pallets;
-  });
-
-  const batchIds=['homeBatches','batchesMade','batchesKpi','productionBatches','prodBatches'];
-  const palletIds=['homePallets','palletsMade','palletsKpi','productionPallets','prodPallets'];
-  batchIds.forEach(id=>{const el=document.getElementById(id); if(el) el.textContent=batches;});
-  palletIds.forEach(id=>{const el=document.getElementById(id); if(el) el.textContent=pallets;});
-
-  let host=document.getElementById('productionOverallSummary');
-  if(!host){
-    const existing=document.getElementById('liveProductionBaseline');
-    const kpi=document.getElementById('kpi');
-    if(!kpi) return;
-    host=document.createElement('div');
-    host.id='productionOverallSummary';
-    host.className='panel';
-    host.style.marginTop='18px';
-    if(existing) existing.parentNode.insertBefore(host, existing);
-    else kpi.appendChild(host);
-  }
-
-  let html='';
-  if(site==='la26' || site==='all'){
-    html += `<div style="border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff">
-      <h4 style="margin:0 0 10px">26th Street Overall</h4>
-      <div><b>Pallets Made:</b> 34</div>
-      <div><b>Batches Made:</b> 136</div>
-      <div><b>Total Dough Waste:</b> 38 lbs</div>
-      <div><b>Total Plastic Waste:</b> 4 lbs</div>
-      <div><b>Flour Left in Bins:</b> 76,910 lbs (Bin 1: 25,530 | Bin 2: 51,380)</div>
-      <div><b>Latest Freezer Inventory:</b> 321 Oil Dough, 28 Mexico, 0 Export pallets</div>
-    </div>`;
-  }
-  if(site==='maywood' || site==='all'){
-    html += `<div style="border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff">
-      <h4 style="margin:0 0 10px">LA Maywood Overall</h4>
-      <div><b>Batches / Mixes Made:</b> 140 total</div>
-      <div><b>Pallet Inventory:</b> 86 Oil + 25 w/o Oil (1,125 count)</div>
-      <div><b>Pallets Shipped / Loaded:</b> 16 (Load 13003: 3 | Load 9005: 13)</div>
-      <div><b>Total Dough Waste:</b> 145 lbs</div>
-      <div><b>Total Plastic Waste:</b> 4.65 lbs</div>
-      <div><b>Box Waste:</b> 10 boxes</div>
-      <div><b>Flour Available:</b> 53,060 lbs</div>
-    </div>`;
-  }
-  host.innerHTML=`<h3 style="margin:0 0 12px">🍕 Production Overall</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px">${html}</div>`;
-}
-
-window.addEventListener('load',()=>setTimeout(applyAuthoritativeProductionOverall,650));
-document.addEventListener('change',e=>{
-  if(e.target && e.target.id==='siteSelector') setTimeout(applyAuthoritativeProductionOverall,150);
-});
-</script>
-<script>
-/* ===== FINAL PRODUCTION DISPLAY RULES — 2026-08-17 =====
-   HOME: only Batches + Pallets.
-   KPI Dashboard: full 26th Street / Maywood breakdown.
-*/
-window.FINAL_PRODUCTION_TOTALS = {
-  la26: { batches:136, pallets:34 },
-  maywood: { batches:140, pallets:111 }, /* 86 Oil + 25 w/o Oil combined for Home */
-  all: { batches:276, pallets:145 }      /* 136+140; 34+86+25 */
-};
-
-function finalProductionHome(){
-  const site=(document.getElementById('siteSelector')||{}).value || 'all';
-  const t=window.FINAL_PRODUCTION_TOTALS[site] || window.FINAL_PRODUCTION_TOTALS.all;
-
-  document.querySelectorAll('.metric-card,.kpi-card').forEach(card=>{
-    // Only operate on HOME cards.
-    if(!card.closest('#home')) return;
-    const label=(card.querySelector('.metric-label')?.textContent || card.textContent || '').toLowerCase();
-    const val=card.querySelector('.metric-number,.kpi-value,.value,strong');
-    if(!val) return;
-    if(label.includes('batches of dough made') || label.includes('batches made')) val.textContent=t.batches;
-    if(label.includes('pallets made')) val.textContent=t.pallets;
-  });
-  ['homeBatches','batchesMade'].forEach(id=>{const e=document.getElementById(id); if(e && e.closest('#home')) e.textContent=t.batches;});
-  ['homePallets','palletsMade'].forEach(id=>{const e=document.getElementById(id); if(e && e.closest('#home')) e.textContent=t.pallets;});
-}
-
-function finalProductionKPIDashboard(){
-  const kpi=document.getElementById('kpi');
-  if(!kpi) return;
-
-  // Hide earlier injected production summary/detail blocks so there is one clean authoritative breakdown.
-  ['productionOverallSummary','liveProductionBaseline'].forEach(id=>{
-    const e=document.getElementById(id); if(e) e.style.display='none';
-  });
-
-  let host=document.getElementById('finalProductionBreakdown');
-  if(!host){
-    host=document.createElement('div');
-    host.id='finalProductionBreakdown';
-    host.className='panel';
-    host.style.marginTop='18px';
-    kpi.appendChild(host);
-  }
-
-  const site=(document.getElementById('siteSelector')||{}).value || 'all';
-  const show26=site==='all'||site==='la26';
-  const showMay=site==='all'||site==='maywood';
-
-  let sections='';
-
-  if(show26) sections += `
-    <div style="border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff">
-      <h3 style="margin:0 0 12px">26th Street Overall</h3>
-      <div class="metric-grid" style="margin-bottom:14px">
-        <div class="metric-card"><div class="metric-label">Batches Made</div><div class="metric-number">136</div><div class="metric-sub">95 + 41 Costco Oil</div></div>
-        <div class="metric-card"><div class="metric-label">Pallets Made</div><div class="metric-number">34</div><div class="metric-sub">24 + 10 pallets</div></div>
-        <div class="metric-card"><div class="metric-label">Dough Waste</div><div class="metric-number">38 lbs</div><div class="metric-sub">18 + 20 lbs</div></div>
-        <div class="metric-card"><div class="metric-label">Plastic Waste</div><div class="metric-number">4 lbs</div><div class="metric-sub">2 + 2 lbs</div></div>
-      </div>
-      <div style="line-height:1.8;font-size:13px">
-        <div><b>Flour Left in Bins:</b> 76,910 lbs</div>
-        <div style="padding-left:16px">Bin #1: 25,530 lbs</div>
-        <div style="padding-left:16px">Bin #2: 51,380 lbs</div>
-        <div style="margin-top:6px"><b>Freezer Pallet Inventory — End of Latest Shift:</b></div>
-        <div style="padding-left:16px">321 Oil Dough pallets</div>
-        <div style="padding-left:16px">28 Mexico pallets</div>
-        <div style="padding-left:16px">0 Export pallets</div>
-      </div>
-    </div>`;
-
-  if(showMay) sections += `
-    <div style="border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff">
-      <h3 style="margin:0 0 12px">Maywood (Lamonica's) Overall</h3>
-      <div class="metric-grid" style="margin-bottom:14px">
-        <div class="metric-card"><div class="metric-label">Batches / Mixes Made</div><div class="metric-number">140</div><div class="metric-sub">70 mixes w/o oil + 70 batches with oil</div></div>
-        <div class="metric-card"><div class="metric-label">Pallet Inventory Logged</div><div class="metric-number">111</div><div class="metric-sub">86 Oil + 25 w/o Oil</div></div>
-        <div class="metric-card"><div class="metric-label">Pallets Shipped / Loaded</div><div class="metric-number">16</div><div class="metric-sub">Load 13003: 3 • Load 9005: 13</div></div>
-        <div class="metric-card"><div class="metric-label">Dough Waste</div><div class="metric-number">145 lbs</div><div class="metric-sub">75 + 70 lbs</div></div>
-        <div class="metric-card"><div class="metric-label">Plastic Waste</div><div class="metric-number">4.65 lbs</div><div class="metric-sub">1.65 + 3.0 lbs</div></div>
-        <div class="metric-card"><div class="metric-label">Box Waste</div><div class="metric-number">10</div><div class="metric-sub">boxes</div></div>
-      </div>
-      <div style="line-height:1.8;font-size:13px">
-        <div><b>Pallet Inventory Breakdown:</b></div>
-        <div style="padding-left:16px">86 pallets — 30oz Oil</div>
-        <div style="padding-left:16px">25 pallets — 30oz w/o Oil</div>
-        <div style="padding-left:32px">1 MB pallet + 24 MC pallets = 1,125 count</div>
-        <div style="margin-top:6px"><b>Pallets Shipped / Loaded:</b> 16 total</div>
-        <div style="padding-left:16px">Load 13003: 3 pallets</div>
-        <div style="padding-left:16px">Load 9005: 13 pallets</div>
-        <div style="margin-top:6px"><b>Flour Available:</b> 53,060 lbs</div>
-      </div>
-    </div>`;
-
-  host.innerHTML=`
-    <h2 style="margin:0 0 6px">🍕 Production KPI Breakdown</h2>
-    <p style="margin:0 0 14px;color:var(--muted);font-size:12px">Detailed production totals by location. Home Dashboard only shows combined Batches and Pallets.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">${sections}</div>`;
-}
-
-function applyFinalProductionDisplay(){
-  finalProductionHome();
-  finalProductionKPIDashboard();
-}
-window.addEventListener('load',()=>setTimeout(applyFinalProductionDisplay,1100));
-document.addEventListener('change',e=>{
-  if(e.target && e.target.id==='siteSelector') setTimeout(applyFinalProductionDisplay,250);
-});
-</script>
 <style>
 .kpi-inner-tabs{
   display:flex;gap:8px;align-items:center;margin:4px 0 18px;padding:5px;
@@ -6804,8 +6381,6 @@ document.addEventListener('change',e=>{
     if(o) o.classList.toggle('active',name==='operations');
     try{localStorage.setItem('lamonicasKpiInnerTab',name);}catch(e){}
     if(name==='operations'){
-      if(typeof applyFinalProductionDisplay==='function') setTimeout(applyFinalProductionDisplay,30);
-      if(typeof forceLiveProductionKPIs==='function') setTimeout(forceLiveProductionKPIs,40);
     }
   }
   document.addEventListener('click',function(e){
@@ -7269,9 +6844,9 @@ async function seedPersistentSiteSummary(site,update,fields,batch){
 
   await ensureOpsDbReady();
   const stored=await opsGet(OPS_STORES.summaries,site);
-  const current=stored?.data||{};
-
-  if(current.seedBatch===batch)return;
+  // Seeds are historical defaults only. Any saved record wins, even without a seed marker.
+  if(stored)return;
+  const current={};
 
   const importedFields=[...new Set([
     ...(current.importedFields||[]),
@@ -7358,21 +6933,21 @@ const EMBEDDED_RESOURCE_FILES={
     title:"Employee Handbook",
     type:"pdf",
     mime:"application/pdf",
-    url:"assets/documents/employee-handbook.pdf"
+    url:"employee-handbook.pdf"
   },
   "maywood-loto":{
     name:"Lamonica's  LOTO Procedures Maywood.xlsx",
     title:"Maywood LOTO Procedures",
     type:"xlsx",
     mime:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    url:"assets/documents/maywood-loto-procedures.xlsx"
+    url:"maywood-loto-procedures.xlsx"
   },
   "26th-loto":{
     name:"Lamonica's 26th St LOTO Procedures.xlsx",
     title:"26th Street LOTO Procedures",
     type:"xlsx",
     mime:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    url:"assets/documents/26th-st-loto-procedures.xlsx"
+    url:"26th-st-loto-procedures.xlsx"
   }
 };
 
