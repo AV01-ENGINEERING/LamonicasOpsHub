@@ -95,12 +95,16 @@
     }finally{if(request===renderRequest)element('archiveList')?.setAttribute?.('aria-busy','false');}
   }
   async function original(id){await openDB();const record=(await archiveRows()).find(row=>row.id===id);if(!record||!OpsArchiveCore.isArchive(record)||(!record.blob&&!record.publicUrl))throw new Error('Original file not found in this browser.');return record;}
-  async function downloadOriginal(id){try{const row=await original(id),url=URL.createObjectURL(row.blob),link=document.createElement('a');link.href=url;link.download=row.name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(error){status(error.message);}}
+  async function downloadOriginal(id){try{const row=await original(id),url=URL.createObjectURL(row.blob),link=document.createElement('a');link.href=url;link.download=row.name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);return true;}catch(error){status(error.message);return false;}}
   async function openOriginal(id){
+    // Reserve the tab during the actual tap, before IndexedDB awaits lose activation.
+    const opened=window.open('about:blank','_blank');
+    if(!opened){status('Your browser blocked the new tab. Use Download original to save this file.');return;}
+    opened.opener=null;
     try{const row=await original(id);const signature=new TextDecoder().decode(await row.blob.slice(0,5).arrayBuffer());
-      if(signature==='%PDF-'){const url=URL.createObjectURL(new Blob([row.blob],{type:'application/pdf'}));const opened=window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),300000);status('PDF opened in a new tab. If your browser blocked it, use Download original.');}
-      else{await downloadOriginal(id);status('Original downloaded. Open Word and other document files with their normal application.');}
-    }catch(error){status(error.message);}
+      if(signature==='%PDF-'){const url=URL.createObjectURL(new Blob([row.blob],{type:'application/pdf'}));opened.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),300000);status('PDF opened in a new tab.');}
+      else{opened.close();if(await downloadOriginal(id))status('Original downloaded. Open Word and other document files with their normal application.');}
+    }catch(error){opened.close();status(error.message);}
   }
   async function editDetails(id){
     if(busy||savingDetails){status('Wait for the current archive action to finish before editing another file.');return;}
