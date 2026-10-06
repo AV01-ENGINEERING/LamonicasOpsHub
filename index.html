@@ -774,6 +774,8 @@ footer strong{color:var(--red)}
 <script src="assets/source-data.js"></script>
 <script src="assets/current-data-adapter.js"></script>
 <script src="assets/archive-ui.js" defer></script>
+<script src="assets/mechanic-notes-data.js"></script>
+<script src="assets/mechanic-notes.js" defer></script>
 <script src="assets/dashboard-filters.js"></script>
 <script src="assets/operational-metrics.js"></script>
 <script src="assets/operational-data.js"></script>
@@ -1900,7 +1902,7 @@ nav{
     font-size:15px!important;
   }
 }
-</style><style>.report-date-controls [hidden],.data-control-actions[hidden],[data-reset-kpi][hidden],[data-reset-home][hidden]{display:none!important}.report-date-controls input,.report-date-controls select{max-width:100%;padding:7px;border:1px solid #cbd1d8;border-radius:6px}.report-date-controls label{font-size:12px}.report-date-controls input[type=date]{min-width:135px}</style></head>
+</style><style>.report-date-controls [hidden],.data-control-actions[hidden],[data-reset-kpi][hidden],[data-reset-home][hidden]{display:none!important}.report-date-controls input,.report-date-controls select{max-width:100%;padding:7px;border:1px solid #cbd1d8;border-radius:6px}.report-date-controls label{font-size:12px}.report-date-controls input[type=date]{min-width:135px}</style><style>#mechanicNotesPanel[hidden],#productionArchivePanel[hidden]{display:none!important}.mechanic-source-images{display:flex;gap:8px;flex-wrap:wrap}.mechanic-source-images span{padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px}</style><link rel="stylesheet" href="assets/archive-modern.css"></head>
 <body>
 <header>
 <div class="header-inner">
@@ -2003,7 +2005,7 @@ nav{
 <button data-hide-home="downtime" type="button">Hide metric</button>
 <button class="reset-metric-btn" data-reset-home="downtime" type="button">Reset metric to 0</button>
 </div>
-<div class="metric-label">Downtime</div>
+<div class="metric-label">Asset Offline Hours</div>
 <div class="metric-number red" id="homeDowntime">0.0h</div>
 <div class="metric-sub">Selected period</div>
 </div>
@@ -2083,7 +2085,7 @@ nav{
 <div class="metric-card kpi-user-card" data-kpi-card="downtime">
 <button aria-label="Metric options" class="kpi-card-menu-btn" type="button">⋮</button>
 <div class="kpi-card-menu"><button data-hide-kpi="downtime" type="button">Hide metric</button><button class="reset-metric-btn" data-reset-kpi="downtime" type="button">Reset metric to 0</button></div>
-<div class="metric-label">Downtime</div><div class="metric-number red" id="kpiTotalDowntime">—</div>
+<div class="metric-label">Asset Offline Hours</div><div class="metric-number red" id="kpiTotalDowntime">—</div>
 </div>
 <div class="metric-card kpi-user-card" data-kpi-card="cost">
 <button aria-label="Metric options" class="kpi-card-menu-btn" type="button">⋮</button>
@@ -2679,9 +2681,16 @@ nav{
 <div class="asset-detail" id="assetDetail"></div>
 </section>
 <section class="page" id="dataupload">
-<div class="page-head"><div><h2>⬆ Data Upload</h2><p>Keep original Word, PDF and other shift reports here. Saving a file does not update dashboard metrics.</p></div><div class="site-tag global-site-label">📍 All Locations</div></div>
-<div class="panel simple-upload-note"><strong>Published original reports.</strong><span>The cleared report catalog is below. Available originals have Open/Download links; remaining files are marked pending publication. Other originals remain pending privacy review. New uploads and label edits stay in this browser; they are not published and never update dashboard metrics. The database and daily updates are not connected yet.</span></div>
-<div class="panel" style="margin-bottom:18px">
+<div class="archive-page-head"><div><p class="archive-eyebrow">OPERATIONS LIBRARY</p><h2>Reports &amp; shift notes</h2><p>Original reports, clear handoffs, and the details behind each shift.</p></div></div>
+<div class="archive-tabs" role="tablist" aria-label="Report archives"><button id="productionArchiveTab" class="active" type="button" data-archive-tab="reports" role="tab" aria-controls="productionArchivePanel" aria-selected="true">Production / Packing Reports <span id="productionTabCount"></span></button><button id="mechanicArchiveTab" type="button" data-archive-tab="mechanics" role="tab" aria-controls="mechanicNotesPanel" aria-selected="false" tabindex="-1">Mechanic Shift Notes <span id="mechanicTabCount"></span></button></div>
+<div id="productionArchivePanel" role="tabpanel" aria-labelledby="productionArchiveTab">
+<div class="archive-toolbar"><label class="archive-search"><span class="sr-only">Search reports</span><input id="archiveSearch" type="search" placeholder="Search filename, date or notes…"></label><button id="archiveClearFilters" class="archive-secondary" type="button">Clear filters</button></div>
+<div class="archive-filters"><label>Facility<select id="archiveFilterSite"><option value="all">All facilities</option><option value="la26">LA 26th St.</option><option value="maywood">LA Maywood</option><option value="indiana">Indiana</option><option value="newyork">New York</option><option value="sacramento">Sacramento</option><option value="unassigned">Not specified</option></select></label><label>From date<input id="archiveFrom" type="date"></label><label>Through date<input id="archiveTo" type="date"></label><label>Shift<select id="archiveFilterShift"><option value="">All shifts</option></select></label><label>Type<select id="archiveFilterKind"><option value="">All types</option><option value="production">Production</option><option value="packaging">Packing</option><option value="maintenance">Maintenance</option><option value="other">Other</option></select></label><label>Availability<select id="archiveAvailability"><option value="">All catalog entries</option><option value="available">Ready to open</option><option value="missing">Original not available</option></select></label></div>
+<div class="archive-results-bar"><p id="archiveCount" role="status">Loading reports…</p><label>Sort <select id="archiveSort"><option value="newest">Newest date</option><option value="oldest">Oldest date</option><option value="shift">Shift</option></select></label></div>
+<p class="archive-availability-summary" id="archiveAvailabilitySummary"></p>
+<div class="archive-browser"><div id="archiveList" class="archive-list" role="listbox" aria-label="Original reports" aria-busy="true"></div><div id="archiveDetail" class="archive-detail" aria-live="polite"></div></div>
+<div id="archiveStatus" class="archive-status" role="status">Adding a file stores the original in this browser. It never updates dashboard metrics.</div>
+<details id="archiveAddPanel" class="archive-add-panel"><summary>Add an original report to this browser</summary><div class="panel" style="margin-bottom:18px">
 <div class="production-upload-grid">
 <label class="field"><span>Facility</span><select id="archiveFacility"><option value="">Choose facility</option><option value="la26">LA 26th St.</option><option value="maywood">LA Maywood</option><option value="indiana">Indiana</option><option value="sacramento">Sacramento</option><option value="newyork">New York</option><option value="unassigned">Location not known</option></select></label>
 <label class="field"><span>Report date (leave blank if unknown)</span><input id="archiveReportDate" type="date"/></label>
@@ -2692,16 +2701,17 @@ nav{
 <div class="ops-area-drop simple-drop" id="archiveDrop"><strong>Drop original reports here</strong><small>Original Word, PDF and other file formats are kept unchanged. Nothing is parsed into dashboard metrics. These labels apply to every file you select; add one facility/date/shift group at a time.</small><button class="primary-btn" id="archiveChoose" type="button">Choose original files</button></div>
 <input id="archiveFileInput" type="file" multiple hidden/>
 <div class="production-actions"><button class="primary-btn" id="archiveSaveDetails" type="button" hidden>Save archive labels</button><button class="small-btn" id="archiveCancelEdit" type="button" hidden>Cancel label edit</button></div>
-<div class="production-status" id="archiveStatus" role="status">Ready to archive originals. Dashboard metrics will not change.</div>
+
 </div>
-<div class="panel" style="margin-bottom:18px"><div class="production-upload-grid">
-<label class="field"><span>Find a report</span><input id="archiveSearch" type="search" placeholder="Filename, notes, date…"/></label>
-<label class="field"><span>Shift</span><select id="archiveFilterShift"><option value="">All shifts</option></select></label>
-<label class="field"><span>Report type</span><select id="archiveFilterKind"><option value="">All types</option><option value="production">Production</option><option value="packaging">Packaging</option><option value="maintenance">Maintenance</option><option value="other">Other report</option></select></label>
-<label class="field"><span>From report date</span><input id="archiveFrom" type="date"/></label>
-<label class="field"><span>Through report date</span><input id="archiveTo" type="date"/></label>
-</div><p id="archiveCount">Loading local archive…</p></div>
-<div id="archiveList"></div>
+</details>
+</div>
+<div id="mechanicNotesPanel" role="tabpanel" aria-labelledby="mechanicArchiveTab" hidden><p id="mechanicAssetStatus" class="archive-availability-summary" role="status"></p>
+<div class="archive-toolbar"><label class="archive-search"><span class="sr-only">Search mechanic notes</span><input id="mechanicSearch" type="search" placeholder="Search mechanic, equipment or note…"></label><button id="mechanicClearFilters" class="archive-secondary" type="button">Clear filters</button><button class="archive-secondary" type="button" onclick="openShiftNotes()">Write quick note</button></div>
+<div class="archive-filters"><label>Mechanic / sender<select id="mechanicSender"><option value="">All senders</option></select></label><label>Facility<select id="mechanicSite"><option value="">All facilities</option><option value="Maywood">Maywood</option><option value="26th">26th Street</option><option value="__unknown">Not specified</option></select></label><label>From date<input id="mechanicFrom" type="date"></label><label>Through date<input id="mechanicTo" type="date"></label><label>Shift<select id="mechanicShift"><option value="">All shifts</option><option value="2nd">2nd (explicit)</option><option value="__unknown">Not specified</option></select></label></div>
+<div class="archive-results-bar"><p id="mechanicCount" role="status">Loading notes…</p><label>Sort <select id="mechanicSort"><option value="newest">Newest date</option><option value="oldest">Oldest date</option><option value="sender">Mechanic / sender</option></select></label></div>
+<div class="archive-browser"><div id="mechanicNotesList" class="archive-list" role="listbox" aria-label="Mechanic shift notes"></div><div id="mechanicNoteDetail" class="archive-detail" aria-live="polite"></div></div>
+</div>
+<dialog id="mechanicPhotoDialog" class="mechanic-photo-dialog" aria-label="Mechanic report image"><form method="dialog"><button class="archive-secondary" aria-label="Close image">Close ✕</button></form><img id="mechanicPhotoLarge" alt=""><p id="mechanicPhotoCaption"></p></dialog>
 </section>
 <section class="page" id="safety">
 <div class="page-head">
@@ -2816,7 +2826,7 @@ nav{
   <br/><br/>
 <strong>Designed by Lamonica's Engineering Team</strong>
 </footer>
-<button class="shift-notes-tab" onclick="openShiftNotes()">Shift Notes</button>
+<button class="shift-notes-tab" onclick="openMechanicArchive()">Shift Notes</button>
 <aside class="shift-notes-drawer" id="shiftNotesDrawer">
 <div class="settings-head"><div><h2>📝 Shift Notes</h2><div class="file-meta">Quick maintenance handoff</div></div><button class="settings-close" onclick="closeShiftNotes()">✕</button></div>
 <div class="shift-note">

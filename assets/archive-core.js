@@ -18,7 +18,10 @@
     const labels=metadata(input);
     if(!/^[a-f0-9]{64}$/.test(sha256))throw new Error('File fingerprint is unavailable. Nothing was archived.');
     const old=existing.find(row=>isArchive(row)&&row.contentSha256===sha256);
-    if(old)return {status:sameLabels(old,labels)?'duplicate':'metadata-review',record:old};
+    if(old){
+      if(!old.blob&&!old.publicUrl)return {status:'restored-local',record:{...old,blob:file,type:String(file.type||old.type||'application/octet-stream'),size:file.size,uploadPending:false,locallyRestoredAt:now,metadataOnly:false}};
+      return {status:sameLabels(old,labels)?'duplicate':'metadata-review',record:old};
+    }
     return {status:'new',record:{...labels,category,name:String(file.name||'Original report'),type:String(file.type||'application/octet-stream'),size:file.size,blob:file,contentSha256:sha256,date:now,archivedAt:now,metadataHistory:[]}};
   }
   function editMetadata(record,input,now){

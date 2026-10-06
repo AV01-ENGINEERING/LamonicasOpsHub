@@ -20,9 +20,17 @@
     const bySite=String(a.location||a.site||'').localeCompare(String(b.location||b.site||''));
     return sort==='shift'?byShift||byDate||bySite:byDate||bySite||byShift;
   });}
-  function maintenance(source,site,selected,adapter){const result=adapter(source,site);const exact=selected.start===source.period.start&&selected.end===source.period.end&&(source.period.verificationStatus||source.period.validationStatus)==='verified';
-    if(!exact){for(const key of ['created','completed','cost','totalDowntime','plannedDowntime','unplannedDowntime','completedOnTime','completedOverdue','completedNoDue','laborHours','completedReactive','completedPreventive'])result[key]=null;result.assetImpactRows=[];}
-    return {...result,periodAvailable:exact,period:source.period,backlogAsOf:source.observedAt};
+  function isVerified(source){const status=source.period.verificationStatus||source.period.validationStatus;return status==='verified'||String(status||'').startsWith('verified-local-calendar-days');}
+  function maintenance(source,site,selected,adapter){
+    const verified=isVerified(source),exact=selected.start===source.period.start&&selected.end===source.period.end;
+    const dates=[];if(selected.start>=source.period.start&&selected.end<=source.period.end){for(let day=date(selected.start);iso(day)<=selected.end;day.setUTCDate(day.getUTCDate()+1))dates.push(iso(day));}
+    const chosen=(source.facilities||[]).filter(r=>site==='all'||r.id===site);
+    const covered=verified&&dates.length>0&&chosen.length>0&&chosen.every(r=>dates.every(d=>r.dailyCoverage?.dates?.includes(d)&&r.dailyMetrics?.some(v=>v.date===d)));
+    let scoped=source;
+    if(!exact&&covered){const sum=(rows,get)=>rows.every(r=>get(r)!=null)?rows.reduce((n,r)=>n+Number(get(r)),0):null;scoped={...source,facilities:source.facilities.map(row=>{const days=(row.dailyMetrics||[]).filter(r=>dates.includes(r.date)),allowed=row.dailyCoverage?.verifiedMetricNames||[];const periodMetrics={};for(const key of Object.keys(row.periodMetrics||{}))periodMetrics[key]=allowed.includes(key)?sum(days,r=>r[key]):null;const cost={...row.recordedCostOfCompletedWorkOrders};for(const key of ['total','labor','parts','other'])cost[key]=allowed.includes('recordedCostOfCompletedWorkOrders')?sum(days,r=>r.recordedCostOfCompletedWorkOrders?.[key]):null;return {...row,periodMetrics,recordedCostOfCompletedWorkOrders:cost,assetReport:{...row.assetReport,totalCost:null,totalDowntimeHours:null,plannedDowntimeHours:null,unplannedDowntimeHours:null,assetCosts:[]}};})};}
+    const result=adapter(scoped,site),available=verified&&(exact||covered);
+    if(!available){for(const key of ['created','completed','cost','totalDowntime','plannedDowntime','unplannedDowntime','completedOnTime','completedOverdue','completedNoDue','laborHours','completedReactive','completedPreventive'])result[key]=null;result.assetImpactRows=[];}
+    return {...result,periodAvailable:available,period:source.period,backlogAsOf:source.observedAt,hasPartialDay:chosen.some(row=>(row.dailyMetrics||[]).some(day=>day.isPartialDay&&day.date>=selected.start&&day.date<=selected.end)),dailyCoverageAvailable:covered};
   }
-  return {range,includes,records,maintenance};
+  return {range,includes,records,maintenance,isVerified};
 });
