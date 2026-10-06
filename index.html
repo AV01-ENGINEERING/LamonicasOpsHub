@@ -1995,9 +1995,9 @@ nav{
 <button data-hide-home="pending" type="button">Hide metric</button>
 <button class="reset-metric-btn" data-reset-home="pending" type="button">Reset metric to 0</button>
 </div>
-<div class="metric-label">Pending WO Requests</div>
-<div class="metric-number warn" id="homeOverdue">0</div>
-<div class="metric-sub">Requires attention</div>
+<div class="metric-label">Pending Approval</div>
+<div class="metric-number warn" id="homeOverdue">—</div>
+<div class="metric-sub">Awaiting approval · count unavailable in current exports</div>
 </div>
 <div class="metric-card clickable home-user-card" data-home-card="downtime" onclick="showPage('kpi')">
 <button aria-label="Metric options" class="kpi-card-menu-btn" type="button">⋮</button>
@@ -2080,7 +2080,8 @@ nav{
 <div class="metric-card kpi-user-card" data-kpi-card="pending">
 <button aria-label="Metric options" class="kpi-card-menu-btn" type="button">⋮</button>
 <div class="kpi-card-menu"><button data-hide-kpi="pending" type="button">Hide metric</button><button class="reset-metric-btn" data-reset-kpi="pending" type="button">Reset metric to 0</button></div>
-<div class="metric-label">Pending WO Requests</div><div class="metric-number warn" id="kpiPending">—</div>
+<div class="metric-label">Pending Approval</div><div class="metric-number warn" id="kpiPending">—</div>
+<div class="metric-sub">Work orders awaiting approval · count unavailable in current exports</div>
 </div>
 <div class="metric-card kpi-user-card" data-kpi-card="downtime">
 <button aria-label="Metric options" class="kpi-card-menu-btn" type="button">⋮</button>
@@ -2313,6 +2314,7 @@ nav{
 </div>
 </section>
 <section class="page" id="drawings">
+<p role="note" class="panel" style="padding:14px;line-height:1.5">Reference asset list: facility assignments and Online labels have not been verified. These are not live equipment statuses.</p>
 <div class="page-head">
 <div>
 <h2>📐 Assets</h2>
@@ -2827,7 +2829,7 @@ nav{
 <strong>Designed by Lamonica's Engineering Team</strong>
 </footer>
 <button class="shift-notes-tab" onclick="openMechanicArchive()">Shift Notes</button>
-<aside class="shift-notes-drawer" id="shiftNotesDrawer">
+<aside class="shift-notes-drawer" id="shiftNotesDrawer" inert aria-hidden="true">
 <div class="settings-head"><div><h2>📝 Shift Notes</h2><div class="file-meta">Quick maintenance handoff</div></div><button class="settings-close" onclick="closeShiftNotes()">✕</button></div>
 <div class="shift-note">
 <select id="shiftNoteSite">
@@ -2853,7 +2855,7 @@ nav{
 </div>
 </div><div class="toast" id="toast"></div>
 <div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
-<aside class="settings-drawer" id="settingsDrawer">
+<aside class="settings-drawer" id="settingsDrawer" inert aria-hidden="true">
 <div class="settings-head">
 <div><h2>⚙ Administrator Settings</h2><div class="file-meta">Operations Hub V2</div></div>
 <button class="settings-close" onclick="closeSettings()">✕</button>
@@ -3876,17 +3878,25 @@ function toast(message){
 
 
 const HUB_SETTINGS_KEY="lamonicasHubSettings";
+let settingsReturnFocus=null;
 function openSettings(){
+  settingsReturnFocus=document.activeElement;
+  document.getElementById("settingsDrawer").inert=false;
+  document.getElementById("settingsDrawer").setAttribute("aria-hidden","false");
   const cfg=JSON.parse(localStorage.getItem(HUB_SETTINGS_KEY)||"{}");
   document.getElementById("settingsDefaultSite").value=cfg.defaultSite||currentSite||"all";
   document.getElementById("settingsPeriod").value=cfg.period||"Weekly";
   document.getElementById("settingsPurchasingEmail").value=localStorage.getItem(PURCHASING_EMAIL_KEY)||"";
   document.getElementById("settingsOverlay").classList.add("open");
   document.getElementById("settingsDrawer").classList.add("open");
+  document.querySelector("#settingsDrawer .settings-close")?.focus();
 }
 function closeSettings(){
   document.getElementById("settingsOverlay").classList.remove("open");
   document.getElementById("settingsDrawer").classList.remove("open");
+  document.getElementById("settingsDrawer").inert=true;
+  document.getElementById("settingsDrawer").setAttribute("aria-hidden","true");
+  settingsReturnFocus?.focus?.();
 }
 function saveHubSettings(){
   const cfg={defaultSite:document.getElementById("settingsDefaultSite").value,period:document.getElementById("settingsPeriod").value};
@@ -3916,8 +3926,9 @@ function exportHubBackup(){
 
 
 const SHIFT_NOTES_KEY="lamonicasShiftNotes";
-function openShiftNotes(){document.getElementById("shiftNotesDrawer").classList.add("open");renderShiftNotes()}
-function closeShiftNotes(){document.getElementById("shiftNotesDrawer").classList.remove("open")}
+let notesReturnFocus=null;
+function openShiftNotes(){notesReturnFocus=document.activeElement;const d=document.getElementById("shiftNotesDrawer");d.inert=false;d.setAttribute("aria-hidden","false");d.classList.add("open");renderShiftNotes();d.querySelector("button")?.focus()}
+function closeShiftNotes(){const d=document.getElementById("shiftNotesDrawer");d.classList.remove("open");d.inert=true;d.setAttribute("aria-hidden","true");notesReturnFocus?.focus?.()}
 function saveShiftNote(){
   const text=document.getElementById("shiftNoteText").value.trim(); if(!text){alert("Enter a shift note first.");return}
   const notes=JSON.parse(localStorage.getItem(SHIFT_NOTES_KEY)||"[]");
@@ -4417,6 +4428,10 @@ function opsInRange(dateValue,range){
 function opsIsCompleted(record){
   return /complete|closed|done|resolved/i.test(record.status||"");
 }
+function opsIsAwaitingApproval(status){
+  return /^(pending|pending approval|awaiting approval|waiting for approval|unapproved)$/.test(String(status??"").trim().toLowerCase().replace(/[_-]+/g," ").replace(/\s+/g," "));
+}
+
 function opsIsOpen(record){
   return !opsIsCompleted(record);
 }
@@ -4579,7 +4594,7 @@ function calculateRecordKpis(records,range,site){
   const reactive=selected.filter(r=>opsType(r,"reactive"));
   const preventive=selected.filter(r=>opsType(r,"preventive"));
   const unassigned=open.filter(r=>!String(r.assignee||"").trim());
-  const pending=open.filter(r=>/request|pending|awaiting approval/i.test(r.status||""));
+  const pending=selected.filter(r=>opsIsAwaitingApproval(r.status));
 
   const ages=selected.map(r=>{
     const start=r.createdDate?new Date(`${r.createdDate}T00:00:00`):null;
@@ -4613,7 +4628,7 @@ function calculateRecordKpis(records,range,site){
     reactive:reactive.length,
     preventive:preventive.length,
     unassigned:unassigned.length,
-    pending:pending.length,
+    pending:pending.length||null,
     avgAge:ages.length?ages.reduce((a,b)=>a+b,0)/ages.length:null,
     cost:costs.length?costs.reduce((a,b)=>a+b,0):null,
     totalDowntime:downtime.length?downtime.reduce((a,b)=>a+b,0):null,
@@ -4846,7 +4861,7 @@ const KPI_METRIC_LABELS={
   completed:"Completed Work Orders",
   open:"Open Work Orders",
   overdue:"Overdue Work Orders",
-  pending:"Pending WO Requests",
+  pending:"Pending Approval",
   downtime:"Downtime",
   cost:"Maintenance Cost",
   reactive:"Reactive Work Orders",
@@ -5003,7 +5018,7 @@ const HOME_METRIC_LABELS={
   batches:"Batches of Dough Made",
   pallets:"Pallets Made",
   completed:"Work Orders Completed",
-  pending:"Pending WO Requests",
+  pending:"Pending Approval",
   downtime:"Downtime"
 };
 
@@ -5314,14 +5329,14 @@ function clickMaintSummaryFromRows(headers,rows,fileName){
     const pending=rows.filter(row=>{
       const id=String(row[requestId]??"").trim();
       const status=String(row[requestStatus]??"").trim().toLowerCase();
-      return id&&/pending|open|new|submitted|awaiting/.test(status);
+      return id&&opsIsAwaitingApproval(status);
     }).length;
     return {
       reportType:"ClickMaint — Work Order Requests",
       detailKey:"work_order_requests",
       headers,
       rows,
-      patch:{pending}
+      patch:{pending:rows.some(row=>String(row[requestId]??"").trim()&&!/^(approved|rejected|cancelled|canceled)$/i.test(String(row[requestStatus]??"").trim())&&!opsIsAwaitingApproval(row[requestStatus]))?null:pending}
     };
   }
 
@@ -5802,7 +5817,7 @@ function importPreviewNumbers(p){
     values.push(previewMetricValue("Overdue Assignments",overdueAssignments));
     values.push(previewMetricValue("Unassigned Work Orders",summary.notAssigned));
   }else if(report.includes("request")){
-    values.push(previewMetricValue("Pending WO Requests",summary.pending));
+    values.push(previewMetricValue("Pending Approval",summary.pending));
     values.push(previewMetricValue("Request Rows",p.recordsDetected??0));
   }else if(report.includes("production")){
     const batches=rows.reduce((sum,row)=>sum+(Number(row.batches)||0),0);
@@ -7106,5 +7121,6 @@ document.addEventListener("keydown",event=>{
     closeEmbeddedResourceViewer();
   }
 });
-</script></body>
+</script><script src="assets/responsive-ui.js" defer></script>
+</body>
 </html>
